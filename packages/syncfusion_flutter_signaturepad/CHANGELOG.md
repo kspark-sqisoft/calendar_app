@@ -1,0 +1,100 @@
+## Unreleased
+
+* No changes. 
+
+## [31.2.16] - 12/06/2025
+
+**Enhancements**
+
+* The [renderToContext2D](https://pub.dev/documentation/syncfusion_flutter_signaturepad/latest/signaturepad/SfSignaturePadState/renderToContext2D.html) method has been updated to improve signature canvas rendering on the Web platform.
+
+## [31.2.15] - 11/25/2025
+
+**General**
+
+* The compatible version of our Flutter signaturepad widget has been updated to Flutter SDK 3.38.
+
+## [31.1.20] - 09/17/2025
+
+**General**
+
+*  The compatible version of our Flutter signaturepad widget has been updated to Flutter SDK 3.35.
+
+## [30.1.37] - 06/25/2025
+
+**General**
+
+*  The compatible version of our Flutter signaturepad widget has been updated to Flutter SDK 3.32.0.
+
+## [29.1.39] - 22/04/2025
+
+**General**
+
+*  The minimum Dart version has been updated to 3.7.
+
+## [29.1.33] - 25/03/2025
+
+**General**
+
+*  The compatible version of our Flutter signaturepad widget has been updated to Flutter SDK 3.29.0.
+*  The Syncfusion<sup>&reg;</sup> Flutter signaturepad example sample have been updated to support [kotlin build scripts](https://docs.flutter.dev/release/breaking-changes/flutter-gradle-plugin-apply) in Android platform.
+*  The Syncfusion<sup>&reg;</sup> Flutter signaturepad example sample have been updated to support [Swift package manager](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-app-developers) in macOS and iOS platforms.
+
+## [28.2.6] - 18/02/2025
+
+**General**
+
+* The minimum Dart version of our Flutter widgets has been updated to 3.4 from 3.3.
+
+## [28.1.36] - 12/24/2024
+
+**General**
+
+* The compatible version of our Flutter signaturepad widget has been updated to Flutter SDK 3.27.0.
+
+## [28.1.33] - 12/12/2024
+
+**General**
+
+* All of our Syncfusion<sup>&reg;</sup> Flutter widgets have been updated to support [`WebAssembly`](https://docs.flutter.dev/platform-integration/web/wasm) (WASM) as a compilation target for building web applications.
+* The minimum Dart version of our Flutter widgets has been updated to 3.3 from 2.17.
+
+## [27.1.48] - 09/18/2024
+
+**General**
+
+* The compatible version of our Flutter signaturepad widget has been updated to Flutter SDK 3.24.0.
+
+## [25.1.35] - 03/15/2024
+
+**General**
+
+* Provided th​e Material 3 themes support.
+
+## [21.1.35] - 03/23/2023
+
+**Bugs**
+
+* #FB42032: The vertical signing works properly when the signature pad is wrapped inside a scrollable widget.
+
+### Features
+
+* **onDraw callback** - Get the offset of each stroke in the Signature Pad with `onDraw` callback.
+* **Get strokes as path collection** - The strokes in the Signature Pad can be retrieved as a ui.path collection.
+
+### Breaking changes
+
+* The [`onSignStart`](https://pub.dev/documentation/syncfusion_flutter_signaturepad/latest/signaturepad/SfSignaturePad/onSignStart.html) callback is now renamed as `onDrawStart`.
+* The [`onSignEnd`](https://pub.dev/documentation/syncfusion_flutter_signaturepad/latest/signaturepad/SfSignaturePad/onSignEnd.html) callback is now renamed as `onDrawEnd`.
+* The return type of onSignStart (now onDrawStart) callback is now changes to bool from void.
+
+## [18.3.35-beta]
+
+Initial release.
+
+**Features**
+
+* **Signature stroke color customization** - The widget allows you to choose the stroke color for the signature.
+* **Signature stroke width customization** - The widget allows you to set the minimum and maximum stroke widths for the signature.
+* **SignaturePad background color customization** - The widget allows you to set the background color for the SignaturePad.
+* **Save as image** - The widget provides the option to save the drawn signature as an image. This converted image can be embedded in documents to denote a signature.

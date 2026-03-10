@@ -1,0 +1,25 @@
+
+name: syncfusion_pdfviewer_web
+description: Web platform implementation of the Flutter PDF Viewer library that lets you view the PDF documents seamlessly and efficiently.
+version: 32.1.19
+homepage: https://github.com/syncfusion/flutter-widgets/tree/master/packages/syncfusion_pdfviewer_web
+
+environment:
+  sdk: ^3.7.0
+  flutter: '>=3.35.1'
+
+flutter:
+  plugin:
+    platforms:
+     web:
+        pluginClass: SyncfusionFlutterPdfViewerPlugin
+        fileName: pdfviewer_web.dart
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  web: ^1.0.0
+  syncfusion_pdfviewer_platform_interface:
+    path: ../syncfusion_flutter_pdfviewer_platform_interface

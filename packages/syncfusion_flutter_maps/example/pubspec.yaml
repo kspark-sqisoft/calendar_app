@@ -1,0 +1,23 @@
+name: maps_sample
+description: This project demonstrates how to use Syncfusion Flutter Maps widget.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/world_map.json
+    - assets/australia.json
+
+dependencies:
+  flutter:
+    sdk: flutter
+  intl: ^0.20.2
+  syncfusion_flutter_maps:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

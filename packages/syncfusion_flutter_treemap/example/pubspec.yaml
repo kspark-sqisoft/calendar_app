@@ -1,0 +1,19 @@
+name: treemap_sample
+description: This project demonstrates how to use Syncfusion Flutter Treemap widget.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.0
+
+flutter:
+  uses-material-design: true
+
+dependencies:
+  flutter:
+    sdk: flutter
+  syncfusion_flutter_treemap:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

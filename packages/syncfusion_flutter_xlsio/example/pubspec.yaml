@@ -1,0 +1,16 @@
+name: xlsio_example
+description: Demo for creating a Excel file using syncfusion_flutter_xlsio package.
+
+environment:
+  sdk: ^3.7.0
+
+flutter:
+  uses-material-design: true
+
+dependencies:
+  flutter:
+    sdk: flutter
+  path_provider: ^2.0.1
+  open_file: ^3.0.1
+  syncfusion_flutter_xlsio:
+    path: ../

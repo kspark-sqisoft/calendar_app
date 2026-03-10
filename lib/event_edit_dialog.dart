@@ -46,6 +46,17 @@ class _EventEditDialogState extends State<_EventEditDialog> {
   late bool _isAllDay;
   String? _recurrenceRule;
 
+  late final TextEditingController _fromYear;
+  late final TextEditingController _fromMonth;
+  late final TextEditingController _fromDay;
+  late final TextEditingController _fromHour;
+  late final TextEditingController _fromMinute;
+  late final TextEditingController _toYear;
+  late final TextEditingController _toMonth;
+  late final TextEditingController _toDay;
+  late final TextEditingController _toHour;
+  late final TextEditingController _toMinute;
+
   static const List<Color> _colorOptions = [
     Colors.blue,
     Colors.green,
@@ -84,11 +95,120 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       _isAllDay = false;
       _recurrenceRule = null;
     }
+    _fromYear = TextEditingController(text: '${_from.year}');
+    _fromMonth = TextEditingController(text: '${_from.month}');
+    _fromDay = TextEditingController(text: '${_from.day}');
+    _fromHour = TextEditingController(text: '${_from.hour}');
+    _fromMinute = TextEditingController(text: '${_from.minute}');
+    _toYear = TextEditingController(text: '${_to.year}');
+    _toMonth = TextEditingController(text: '${_to.month}');
+    _toDay = TextEditingController(text: '${_to.day}');
+    _toHour = TextEditingController(text: '${_to.hour}');
+    _toMinute = TextEditingController(text: '${_to.minute}');
+  }
+
+  void _syncFromToFields() {
+    _fromYear.text = '${_from.year}';
+    _fromMonth.text = '${_from.month}';
+    _fromDay.text = '${_from.day}';
+    _fromHour.text = '${_from.hour}';
+    _fromMinute.text = '${_from.minute}';
+    _toYear.text = '${_to.year}';
+    _toMonth.text = '${_to.month}';
+    _toDay.text = '${_to.day}';
+    _toHour.text = '${_to.hour}';
+    _toMinute.text = '${_to.minute}';
+  }
+
+  int? _parseInt(String s, int min, int max) {
+    final n = int.tryParse(s.trim());
+    if (n == null || n < min || n > max) return null;
+    return n;
+  }
+
+  bool _isValidDate(int y, int m, int d) {
+    final dt = DateTime(y, m, d);
+    return dt.year == y && dt.month == m && dt.day == d;
+  }
+
+  /// 입력 필드에서만 파싱. state(_from/_to)는 건드리지 않음. 저장 시 직접 사용.
+  DateTime? _parseFromFromFields() {
+    final y = _parseInt(_fromYear.text, 2000, 2100);
+    final m = _parseInt(_fromMonth.text, 1, 12);
+    final d = _parseInt(_fromDay.text, 1, 31);
+    final h = _parseInt(_fromHour.text, 0, 23);
+    final min = _parseInt(_fromMinute.text, 0, 59);
+    if (y == null || m == null || d == null || h == null || min == null)
+      return null;
+    if (!_isValidDate(y, m, d)) return null;
+    return DateTime(y, m, d, h, min);
+  }
+
+  DateTime? _parseToFromFields() {
+    final y = _parseInt(_toYear.text, 2000, 2100);
+    final m = _parseInt(_toMonth.text, 1, 12);
+    final d = _parseInt(_toDay.text, 1, 31);
+    final h = _parseInt(_toHour.text, 0, 23);
+    final min = _parseInt(_toMinute.text, 0, 59);
+    if (y == null || m == null || d == null || h == null || min == null)
+      return null;
+    if (!_isValidDate(y, m, d)) return null;
+    return DateTime(y, m, d, h, min);
+  }
+
+  bool _applyFromFields() {
+    final y = _parseInt(_fromYear.text, 2000, 2100);
+    final m = _parseInt(_fromMonth.text, 1, 12);
+    final d = _parseInt(_fromDay.text, 1, 31);
+    final h = _parseInt(_fromHour.text, 0, 23);
+    final min = _parseInt(_fromMinute.text, 0, 59);
+    if (y == null || m == null || d == null || h == null || min == null)
+      return false;
+    if (!_isValidDate(y, m, d)) return false;
+    final next = DateTime(y, m, d, h, min);
+    setState(() {
+      _from = next;
+      if (_to.isBefore(_from) || _to.isAtSameMomentAs(_from)) {
+        _to = _from.add(const Duration(hours: 1));
+      }
+      _syncFromToFields();
+    });
+    return true;
+  }
+
+  bool _applyToFields() {
+    final y = _parseInt(_toYear.text, 2000, 2100);
+    final m = _parseInt(_toMonth.text, 1, 12);
+    final d = _parseInt(_toDay.text, 1, 31);
+    final h = _parseInt(_toHour.text, 0, 23);
+    final min = _parseInt(_toMinute.text, 0, 59);
+    if (y == null || m == null || d == null || h == null || min == null)
+      return false;
+    if (!_isValidDate(y, m, d)) return false;
+    final next = DateTime(y, m, d, h, min);
+    setState(() {
+      _to = next;
+      if (_to.isBefore(_from)) {
+        _from = _to.subtract(const Duration(hours: 1));
+      }
+      _syncFromToFields();
+    });
+    return true;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _fromYear.dispose();
+    _fromMonth.dispose();
+    _fromDay.dispose();
+    _fromHour.dispose();
+    _fromMinute.dispose();
+    _toYear.dispose();
+    _toMonth.dispose();
+    _toDay.dispose();
+    _toHour.dispose();
+    _toMinute.dispose();
     super.dispose();
   }
 
@@ -110,6 +230,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       if (_to.isBefore(_from) || _to.isAtSameMomentAs(_from)) {
         _to = _from.add(const Duration(hours: 1));
       }
+      _syncFromToFields();
     });
   }
 
@@ -129,27 +250,43 @@ class _EventEditDialogState extends State<_EventEditDialog> {
     setState(() {
       _to = DateTime(date.year, date.month, date.day, time.hour, time.minute);
       if (_to.isBefore(_from)) _from = _to.subtract(const Duration(hours: 1));
+      _syncFromToFields();
     });
   }
 
   void _save() {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('일정 제목을 입력해 주세요.')),
-      );
+    // 저장 시 입력 필드에서 바로 파싱해서 사용 (포커스/엔터 없이 Save만 눌러도 반영)
+    final from = _parseFromFromFields();
+    if (from == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('시작 일시를 올바르게 입력해 주세요.')));
       return;
     }
-    if (!_to.isAfter(_from)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('종료 시각은 시작 시각보다 뒤여야 합니다.')),
-      );
+    final to = _parseToFromFields();
+    if (to == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('종료 일시를 올바르게 입력해 주세요.')));
+      return;
+    }
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('일정 제목을 입력해 주세요.')));
+      return;
+    }
+    if (!to.isAfter(from)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('종료 시각은 시작 시각보다 뒤여야 합니다.')));
       return;
     }
     final event = Event(
       eventName: name,
-      from: _from,
-      to: _to,
+      from: from,
+      to: to,
       background: _background,
       isAllDay: _isAllDay,
       recurrenceRule: _recurrenceRule,
@@ -165,7 +302,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       title: Text(isEdit ? '이벤트 수정' : '새 이벤트'),
       content: SingleChildScrollView(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 320, maxWidth: 400),
+          constraints: const BoxConstraints(minWidth: 400, maxWidth: 480),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -180,34 +317,98 @@ class _EventEditDialogState extends State<_EventEditDialog> {
               ),
               const SizedBox(height: 16),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('시작', style: TextStyle(fontWeight: FontWeight.w500)),
+                  const SizedBox(
+                    width: 40,
+                    child: Text(
+                      '시작',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
                   const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.calendar_today, size: 18),
+                    label: Text(
+                      _formatDateTime(_from),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    onPressed: _pickFrom,
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.calendar_today, size: 18),
-                      label: Text(
-                        _formatDateTime(_from),
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                      onPressed: _pickFrom,
+                    child: Row(
+                      children: [
+                        _numberField(_fromYear, '년', 60, () {
+                          if (!_applyFromFields())
+                            setState(() => _syncFromToFields());
+                        }),
+                        _numberField(_fromMonth, '월', 44, () {
+                          if (!_applyFromFields())
+                            setState(() => _syncFromToFields());
+                        }),
+                        _numberField(_fromDay, '일', 44, () {
+                          if (!_applyFromFields())
+                            setState(() => _syncFromToFields());
+                        }),
+                        _numberField(_fromHour, '시', 44, () {
+                          if (!_applyFromFields())
+                            setState(() => _syncFromToFields());
+                        }),
+                        _numberField(_fromMinute, '분', 44, () {
+                          if (!_applyFromFields())
+                            setState(() => _syncFromToFields());
+                        }),
+                      ],
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('종료', style: TextStyle(fontWeight: FontWeight.w500)),
+                  const SizedBox(
+                    width: 40,
+                    child: Text(
+                      '종료',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
                   const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.calendar_today, size: 18),
+                    label: Text(
+                      _formatDateTime(_to),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    onPressed: _pickTo,
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.calendar_today, size: 18),
-                      label: Text(
-                        _formatDateTime(_to),
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                      onPressed: _pickTo,
+                    child: Row(
+                      children: [
+                        _numberField(_toYear, '년', 60, () {
+                          if (!_applyToFields())
+                            setState(() => _syncFromToFields());
+                        }),
+                        _numberField(_toMonth, '월', 44, () {
+                          if (!_applyToFields())
+                            setState(() => _syncFromToFields());
+                        }),
+                        _numberField(_toDay, '일', 44, () {
+                          if (!_applyToFields())
+                            setState(() => _syncFromToFields());
+                        }),
+                        _numberField(_toHour, '시', 44, () {
+                          if (!_applyToFields())
+                            setState(() => _syncFromToFields());
+                        }),
+                        _numberField(_toMinute, '분', 44, () {
+                          if (!_applyToFields())
+                            setState(() => _syncFromToFields());
+                        }),
+                      ],
                     ),
                   ),
                 ],
@@ -247,10 +448,13 @@ class _EventEditDialogState extends State<_EventEditDialog> {
               const Text('반복', style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),
               DropdownButtonFormField<String?>(
-                value: _recurrenceRule,
+                initialValue: _recurrenceRule,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
                 items: _recurrenceLabels.entries.map((e) {
                   return DropdownMenuItem<String?>(
@@ -269,15 +473,43 @@ class _EventEditDialogState extends State<_EventEditDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('취소'),
         ),
-        FilledButton(
-          onPressed: _save,
-          child: const Text('저장'),
-        ),
+        FilledButton(onPressed: _save, child: const Text('저장')),
       ],
     );
   }
 
   String _formatDateTime(DateTime dt) {
     return '${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _numberField(
+    TextEditingController controller,
+    String label, [
+    double width = 50,
+    VoidCallback? onComplete,
+  ]) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: SizedBox(
+        width: width,
+        child: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          maxLength: label == '년' ? 4 : 2,
+          decoration: InputDecoration(
+            labelText: label,
+            counterText: '',
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 10,
+            ),
+            border: const OutlineInputBorder(),
+          ),
+          onEditingComplete: onComplete,
+        ),
+      ),
+    );
   }
 }

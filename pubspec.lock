@@ -789,35 +789,31 @@ packages:
   syncfusion_flutter_calendar:
     dependency: "direct main"
     description:
-      name: syncfusion_flutter_calendar
-      sha256: bb17407d4c11a1362d66de0b571267aa83d8f408756aa07b8690c982eedc801d
-      url: "https://pub.dev"
-    source: hosted
-    version: "32.2.8"
+      path: "packages/syncfusion_flutter_calendar"
+      relative: true
+    source: path
+    version: "32.1.19"
   syncfusion_flutter_core:
     dependency: transitive
     description:
-      name: syncfusion_flutter_core
-      sha256: "080c4a57f12cb03869c863f6b33fb170ce9653ac741281f11ff8e067dc96fe99"
-      url: "https://pub.dev"
-    source: hosted
-    version: "32.2.8"
+      path: "packages/syncfusion_flutter_core"
+      relative: true
+    source: path
+    version: "32.1.19"
   syncfusion_flutter_datepicker:
     dependency: transitive
     description:
-      name: syncfusion_flutter_datepicker
-      sha256: "730cec4eba46ead75fb2f20ea060d9949aeaf0962faf9dda5f8fe0d64eca3d10"
-      url: "https://pub.dev"
-    source: hosted
-    version: "32.2.8"
+      path: "packages/syncfusion_flutter_datepicker"
+      relative: true
+    source: path
+    version: "32.1.19"
   syncfusion_localizations:
     dependency: transitive
     description:
-      name: syncfusion_localizations
-      sha256: b762a6a285a4cdb507f39644442412d6c05192a34194038dbcca8ee5ad1a2515
-      url: "https://pub.dev"
-    source: hosted
-    version: "32.2.8"
+      path: "packages/syncfusion_localizations"
+      relative: true
+    source: path
+    version: "32.1.19"
   synchronized:
     dependency: transitive
     description:
@@ -862,10 +858,10 @@ packages:
     dependency: transitive
     description:
       name: timezone
-      sha256: "784a5e34d2eb62e1326f24d6f600aaaee452eb8ca8ef2f384a59244e292d158b"
+      sha256: dd14a3b83cfd7cb19e7888f1cbc20f258b8d71b54c06f79ac585f14093a287d1
       url: "https://pub.dev"
     source: hosted
-    version: "0.11.0"
+    version: "0.10.1"
   typed_data:
     dependency: transitive
     description:

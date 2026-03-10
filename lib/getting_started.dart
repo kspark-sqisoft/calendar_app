@@ -29,10 +29,26 @@ class _GettingStartedState extends State<GettingStarted> {
   Event? _lastTappedEvent;
   static const _doubleTapInterval = Duration(milliseconds: 400);
 
+  /// 현재 캘린더 뷰 (기본: timelineDay)
+  CalendarView _currentView = CalendarView.timelineDay;
+
+  static const _viewLabels = {
+    CalendarView.day: '일',
+    CalendarView.week: '주',
+    CalendarView.workWeek: '주(평일)',
+    CalendarView.month: '월',
+    CalendarView.timelineDay: '타임라인 일',
+    CalendarView.timelineWeek: '타임라인 주',
+    CalendarView.timelineWorkWeek: '타임라인 평일',
+    CalendarView.timelineMonth: '타임라인 월',
+    CalendarView.schedule: '스케줄',
+  };
+
   @override
   void initState() {
     super.initState();
     _calendarController = CalendarController();
+    _calendarController.view = CalendarView.timelineDay;
     _eventDataSource = EventDataSource(_events);
     _loadEvents();
   }
@@ -216,6 +232,48 @@ class _GettingStartedState extends State<GettingStarted> {
       autofocus: true,
       onKeyEvent: _handleKeyEvent,
       child: Scaffold(
+        appBar: AppBar(
+          title: const Text('캘린더'),
+          actions: [
+            PopupMenuButton<CalendarView>(
+              tooltip: '뷰 선택',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.view_agenda, size: 20),
+                    const SizedBox(width: 8),
+                    Text(_viewLabels[_currentView] ?? _currentView.name),
+                  ],
+                ),
+              ),
+              onSelected: (view) {
+                setState(() => _currentView = view);
+                _calendarController.view = view;
+              },
+              itemBuilder: (context) => CalendarView.values
+                  .map(
+                    (view) => PopupMenuItem<CalendarView>(
+                      value: view,
+                      child: Row(
+                        children: [
+                          if (_currentView == view)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 12),
+                              child: Icon(Icons.check, color: Colors.blue),
+                            )
+                          else
+                            const SizedBox(width: 36),
+                          Text(_viewLabels[view] ?? view.name),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _loadError != null
@@ -261,11 +319,14 @@ class _GettingStartedState extends State<GettingStarted> {
                   }
                 },
                 child: SfCalendar(
+                  key: ValueKey<CalendarView>(_currentView),
                   controller: _calendarController,
                   dataSource: _eventDataSource,
-                  view: CalendarView.timelineDay,
+                  view: _currentView,
                   showTodayButton: true,
                   showNavigationArrow: true,
+                  todayHighlightColor: Colors.blueAccent,
+
                   onTap: (details) {
                     if (details.date != null &&
                         details.targetElement == CalendarElement.calendarCell) {

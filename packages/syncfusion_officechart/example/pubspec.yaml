@@ -1,0 +1,17 @@
+name: officechart_example
+description: Demo for creating a Excel file with chart using syncfusion_officechart package.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.0
+
+flutter:
+  uses-material-design: true
+
+dependencies:
+  flutter:
+    sdk: flutter
+  path_provider: ^2.0.1
+  open_file: ^3.0.1
+  syncfusion_officechart:
+    path: ../
