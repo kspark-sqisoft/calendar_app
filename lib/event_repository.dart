@@ -12,7 +12,7 @@ class EventRepository {
 
   static const _table = 'events';
   static const _dbName = 'calendar_events.db';
-  static const _version = 1;
+  static const _version = 2;
 
   Database? _db;
 
@@ -30,9 +30,17 @@ class EventRepository {
             colorValue INTEGER NOT NULL,
             isAllDay INTEGER NOT NULL,
             recurrenceRule TEXT,
-            exceptionDatesJson TEXT
+            exceptionDatesJson TEXT,
+            displayOrder INTEGER
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            'ALTER TABLE $_table ADD COLUMN displayOrder INTEGER',
+          );
+        }
       },
     );
     return _db!;
@@ -57,6 +65,7 @@ class EventRepository {
       isAllDay: (row['isAllDay'] as int) == 1,
       recurrenceRule: row['recurrenceRule'] as String?,
       recurrenceExceptionDates: exceptionDates,
+      displayOrder: row['displayOrder'] as int?,
     );
   }
 
@@ -84,6 +93,7 @@ class EventRepository {
         'isAllDay': event.isAllDay ? 1 : 0,
         'recurrenceRule': event.recurrenceRule,
         'exceptionDatesJson': exceptionJson,
+        'displayOrder': event.displayOrder,
       },
     );
     return Event(
@@ -95,6 +105,7 @@ class EventRepository {
       isAllDay: event.isAllDay,
       recurrenceRule: event.recurrenceRule,
       recurrenceExceptionDates: event.recurrenceExceptionDates,
+      displayOrder: event.displayOrder,
     );
   }
 
@@ -117,6 +128,7 @@ class EventRepository {
         'isAllDay': event.isAllDay ? 1 : 0,
         'recurrenceRule': event.recurrenceRule,
         'exceptionDatesJson': exceptionJson,
+        'displayOrder': event.displayOrder,
       },
       where: 'id = ?',
       whereArgs: [event.id],

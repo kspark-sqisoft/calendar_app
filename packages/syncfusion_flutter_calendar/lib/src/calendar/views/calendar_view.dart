@@ -2409,6 +2409,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
             previousResource,
             previousResource,
             appointment.exactStartTime,
+            dropPosition: null,
           ),
         );
       }
@@ -2525,6 +2526,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
               previousResource,
               previousResource,
               appointment.exactStartTime,
+              dropPosition: null,
             ),
           );
         }
@@ -2610,6 +2612,20 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       <dynamic>[newAppointment],
     );
 
+    final Offset? dropPosition;
+    if (_dragDetails.value.appointmentView?.appointmentRect != null) {
+      final rect = _dragDetails.value.appointmentView!.appointmentRect!;
+      final appointmentPosition = _dragDetails.value.position.value! - _dragDifferenceOffset!;
+      final centerY = appointmentPosition.dy + rect.height / 2 + widget.calendar.headerHeight;
+      double centerX = appointmentPosition.dx + rect.width / 2;
+      if (CalendarViewHelper.isTimelineView(widget.view) &&
+          currentState._scrollController != null) {
+        centerX -= currentState._scrollController!.offset;
+      }
+      dropPosition = Offset(centerX, centerY);
+    } else {
+      dropPosition = null;
+    }
     _resetDraggingDetails(currentState);
     if (widget.calendar.onDragEnd != null) {
       widget.calendar.onDragEnd!(
@@ -2618,6 +2634,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
           previousResource,
           selectedResource,
           callbackStartDate,
+          dropPosition: dropPosition,
         ),
       );
     }
@@ -9984,11 +10001,15 @@ class _CalendarViewState extends State<_CalendarView>
           widget.calendar.timeSlotViewSettings,
           isTimelineView,
           widget.visibleDates,
-          widget.calendar.todayHighlightColor ??
-              widget.calendarTheme.todayHighlightColor,
+          widget.calendar.currentTimeIndicatorColor ??
+              Colors.red,
+          widget.calendar.currentTimeIndicatorTextColor ??
+              Colors.white,
           _isRTL,
           _currentTimeNotifier,
           widget.calendar.timeZone ?? '',
+          widget.calendar.currentTimeIndicatorLineWidth,
+          widget.calendar.currentTimeIndicatorCircleRadius,
         ),
         size: Size(width, height),
       ),
@@ -14015,7 +14036,7 @@ class _SelectionPainter extends CustomPainter {
     selectionDecoration ??= BoxDecoration(
       color: Colors.transparent,
       border: Border.all(color: calendarTheme.selectionBorderColor!, width: 2),
-      borderRadius: const BorderRadius.all(Radius.circular(2)),
+      borderRadius: const BorderRadius.all(Radius.circular(10)),
     );
 
     getCalendarState(_updateCalendarStateDetails);
@@ -14917,19 +14938,25 @@ class _CurrentTimeIndicator extends CustomPainter {
     this.timeSlotViewSettings,
     this.isTimelineView,
     this.visibleDates,
-    this.todayHighlightColor,
+    this.indicatorColor,
+    this.indicatorTextColor,
     this.isRTL,
     ValueNotifier<int> repaintNotifier,
     this.timeZone,
+    this.lineWidth,
+    this.circleRadius,
   ) : super(repaint: repaintNotifier);
   final double timeIntervalSize;
   final TimeSlotViewSettings timeSlotViewSettings;
   final bool isTimelineView;
   final List<DateTime> visibleDates;
   final double timeRulerSize;
-  final Color? todayHighlightColor;
+  final Color indicatorColor;
+  final Color indicatorTextColor;
   final bool isRTL;
   final String timeZone;
+  final double? lineWidth;
+  final double? circleRadius;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -14979,23 +15006,62 @@ class _CurrentTimeIndicator extends CustomPainter {
       timeSlotViewSettings,
       minuteHeight,
     );
-    final Paint painter =
+    final double strokeW = lineWidth ?? 1;
+    final double cornerRadius = circleRadius ?? 5;
+
+    final String timeText =
+        '${getLocationDateTime.hour.toString().padLeft(2, '0')}:${getLocationDateTime.minute.toString().padLeft(2, '0')}';
+    final TextPainter textPainter = TextPainter(
+      text: TextSpan(
+        text: timeText,
+        style: TextStyle(
+          fontSize: 11,
+          color: indicatorTextColor,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    const double paddingH = 6;
+    const double paddingV = 3;
+    const double paddingTop = 8;
+    final double boxWidth = textPainter.width + paddingH * 2;
+    final double boxHeight = textPainter.height + paddingV * 2;
+
+    final Paint fillPainter =
         Paint()
-          ..color = todayHighlightColor!
-          ..strokeWidth = 1
+          ..color = indicatorColor
           ..isAntiAlias = true
           ..style = PaintingStyle.fill;
+    final Paint strokePainter =
+        Paint()
+          ..color = indicatorColor
+          ..strokeWidth = strokeW
+          ..isAntiAlias = true
+          ..style = PaintingStyle.stroke;
+
     if (isTimelineView) {
       final double viewSize = size.width / visibleDates.length;
       double startXPosition = (index * viewSize) + currentTimePosition;
       if (isRTL) {
         startXPosition = size.width - startXPosition;
       }
-      canvas.drawCircle(Offset(startXPosition, 5), 5, painter);
+      double boxLeft = startXPosition - boxWidth / 2;
+      boxLeft = boxLeft.clamp(2.0, size.width - boxWidth - 2);
+      final RRect boxRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(boxLeft, paddingTop, boxWidth, boxHeight),
+        Radius.circular(cornerRadius),
+      );
+      canvas.drawRRect(boxRect, fillPainter);
+      canvas.drawRRect(boxRect, strokePainter);
+      textPainter.paint(
+        canvas,
+        Offset(boxLeft + paddingH, paddingTop + paddingV),
+      );
       canvas.drawLine(
-        Offset(startXPosition, 0),
+        Offset(startXPosition, paddingTop + boxHeight),
         Offset(startXPosition, size.height),
-        painter,
+        strokePainter,
       );
     } else {
       final double viewSize =
@@ -15003,17 +15069,31 @@ class _CurrentTimeIndicator extends CustomPainter {
       final double startYPosition = currentTimePosition;
       double viewStartPosition = (index * viewSize) + timeRulerSize;
       double viewEndPosition = viewStartPosition + viewSize;
-      double startXPosition = viewStartPosition < 5 ? 5 : viewStartPosition;
+      double boxLeft = viewStartPosition + (viewSize - boxWidth) / 2;
+      if (boxLeft < viewStartPosition + 2) boxLeft = viewStartPosition + 2;
+      if (boxLeft + boxWidth > viewEndPosition - 2) {
+        boxLeft = viewEndPosition - boxWidth - 2;
+      }
       if (isRTL) {
         viewStartPosition = size.width - viewStartPosition;
         viewEndPosition = size.width - viewEndPosition;
-        startXPosition = size.width - startXPosition;
+        boxLeft = size.width - boxLeft - boxWidth;
       }
-      canvas.drawCircle(Offset(startXPosition, startYPosition), 5, painter);
+      final double boxTop = startYPosition - boxHeight / 2 - paddingTop;
+      final RRect boxRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(boxLeft, boxTop, boxWidth, boxHeight),
+        Radius.circular(cornerRadius),
+      );
+      canvas.drawRRect(boxRect, fillPainter);
+      canvas.drawRRect(boxRect, strokePainter);
+      textPainter.paint(
+        canvas,
+        Offset(boxLeft + paddingH, boxTop + paddingV),
+      );
       canvas.drawLine(
         Offset(viewStartPosition, startYPosition),
         Offset(viewEndPosition, startYPosition),
-        painter,
+        strokePainter,
       );
     }
   }

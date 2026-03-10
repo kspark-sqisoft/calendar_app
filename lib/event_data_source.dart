@@ -52,7 +52,16 @@ class EventDataSource extends CalendarDataSource<Event> {
       isAllDay: appointment.isAllDay,
       recurrenceRule: customData.recurrenceRule,
       recurrenceExceptionDates: customData.recurrenceExceptionDates,
+      displayOrder: customData.displayOrder,
     );
+  }
+
+  /// 타임라인에서 겹치는 이벤트 순서: 값이 클수록 위에 그림 (온종일 제외).
+  /// null이면 0으로 취급해, 드래그한 쪽(-1 또는 1 등)과 비교되도록 함.
+  @override
+  int? getDisplayOrder(dynamic appointmentData) {
+    if (appointmentData is Event) return appointmentData.displayOrder ?? 0;
+    return null;
   }
 }
 
@@ -66,6 +75,7 @@ class Event {
     required this.isAllDay,
     this.recurrenceRule,
     this.recurrenceExceptionDates,
+    this.displayOrder,
   });
 
   /// DB 저장용 primary key (로컬 저장 시 설정됨)
@@ -82,8 +92,11 @@ class Event {
   /// 반복 일정에서 제외할 날짜들 (이 날짜에는 일정이 표시되지 않음) recurrenceRule(반복 일정)이 있을 때만 사용
   List<DateTime>? recurrenceExceptionDates;
 
+  /// 타임라인에서 겹칠 때 그리는 순서 (큰 값일수록 위). 드래그로 이동한 이벤트가 위로 가도록 사용. 온종일 제외.
+  int? displayOrder;
+
   @override
   String toString() {
-    return 'Event(id: $id, eventName: $eventName, from: $from, to: $to, background: $background, isAllDay: $isAllDay, recurrenceRule: $recurrenceRule, recurrenceExceptionDates: $recurrenceExceptionDates)';
+    return 'Event(id: $id, eventName: $eventName, from: $from, to: $to, background: $background, isAllDay: $isAllDay, recurrenceRule: $recurrenceRule, recurrenceExceptionDates: $recurrenceExceptionDates, displayOrder: $displayOrder)';
   }
 }

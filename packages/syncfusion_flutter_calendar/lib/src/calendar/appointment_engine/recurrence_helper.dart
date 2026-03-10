@@ -328,17 +328,19 @@ class RecurrenceHelper {
         ruleArray.length > 4 && rRule.contains('INTERVAL')
             ? int.parse(intervalCountString)
             : 1;
-    assert(weeklyByDayPos != -1, 'Invalid weekly recurrence rule');
     final List<int> weekDays = <int>[];
-    final String ruleDaysString = weeklyRule[weeklyByDayPos];
-    for (int i = 0; i < weekDaysString.length; i++) {
-      if (!ruleDaysString.contains(weekDaysString[i])) {
-        continue;
+    if (weeklyByDayPos != -1) {
+      final String ruleDaysString = weeklyRule[weeklyByDayPos];
+      for (int i = 0; i < weekDaysString.length; i++) {
+        if (!ruleDaysString.contains(weekDaysString[i])) {
+          continue;
+        }
+        weekDays.add(i);
       }
-
-      weekDays.add(i);
     }
-
+    if (weekDays.isEmpty) {
+      weekDays.add(recurrenceStartDate.weekday % DateTime.daysPerWeek);
+    }
     weekDays.sort();
     final int weekDaysCount = weekDays.length;
     assert(weekDaysCount != 0, 'Invalid weekly recurrence rule');
@@ -584,7 +586,8 @@ class RecurrenceHelper {
       tempCount = tempRecurrenceCount;
     }
 
-    final bool isWeeklySelected = weeklyRule[weeklyByDayPos].length > 6;
+    final bool isWeeklySelected = weeklyByDayPos == -1 ||
+        weeklyRule[weeklyByDayPos].length > 6;
 
     /// Below code modified for fixing issue while setting rule as
     /// "FREQ=WEEKLY;COUNT=10;BYDAY=MO" along with specified start and end
@@ -1344,35 +1347,44 @@ class RecurrenceHelper {
       recProp.recurrenceType = RecurrenceType.weekly;
 
       if (weeklyByDayPos == -1) {
-        return recProp;
-      }
+        const List<WeekDays> weekDayList = <WeekDays>[
+          WeekDays.monday,
+          WeekDays.tuesday,
+          WeekDays.wednesday,
+          WeekDays.thursday,
+          WeekDays.friday,
+          WeekDays.saturday,
+          WeekDays.sunday,
+        ];
+        recProp.weekDays.add(weekDayList[recStartDate.weekday - 1]);
+      } else {
+        final String weeklyByDayString = weeklyRule[weeklyByDayPos];
+        if (weeklyByDayString.contains('SU')) {
+          recProp.weekDays.add(WeekDays.sunday);
+        }
+        if (weeklyByDayString.contains('MO')) {
+          recProp.weekDays.add(WeekDays.monday);
+        }
 
-      final String weeklyByDayString = weeklyRule[weeklyByDayPos];
-      if (weeklyByDayString.contains('SU')) {
-        recProp.weekDays.add(WeekDays.sunday);
-      }
-      if (weeklyByDayString.contains('MO')) {
-        recProp.weekDays.add(WeekDays.monday);
-      }
+        if (weeklyByDayString.contains('TU')) {
+          recProp.weekDays.add(WeekDays.tuesday);
+        }
 
-      if (weeklyByDayString.contains('TU')) {
-        recProp.weekDays.add(WeekDays.tuesday);
-      }
+        if (weeklyByDayString.contains('WE')) {
+          recProp.weekDays.add(WeekDays.wednesday);
+        }
 
-      if (weeklyByDayString.contains('WE')) {
-        recProp.weekDays.add(WeekDays.wednesday);
-      }
+        if (weeklyByDayString.contains('TH')) {
+          recProp.weekDays.add(WeekDays.thursday);
+        }
 
-      if (weeklyByDayString.contains('TH')) {
-        recProp.weekDays.add(WeekDays.thursday);
-      }
+        if (weeklyByDayString.contains('FR')) {
+          recProp.weekDays.add(WeekDays.friday);
+        }
 
-      if (weeklyByDayString.contains('FR')) {
-        recProp.weekDays.add(WeekDays.friday);
-      }
-
-      if (weeklyByDayString.contains('SA')) {
-        recProp.weekDays.add(WeekDays.saturday);
+        if (weeklyByDayString.contains('SA')) {
+          recProp.weekDays.add(WeekDays.saturday);
+        }
       }
     } else if (monthly == 'MONTHLY') {
       recProp.recurrenceType = RecurrenceType.monthly;

@@ -205,6 +205,10 @@ class SfCalendar extends StatefulWidget {
     this.showTodayButton = false,
     this.allowViewNavigation = false,
     this.showCurrentTimeIndicator = true,
+    this.currentTimeIndicatorLineWidth,
+    this.currentTimeIndicatorCircleRadius,
+    this.currentTimeIndicatorColor,
+    this.currentTimeIndicatorTextColor,
     this.cellEndPadding = -1,
     this.viewNavigationMode = ViewNavigationMode.snap,
     this.allowedViews,
@@ -422,6 +426,18 @@ class SfCalendar extends StatefulWidget {
   ///
   /// ```
   final bool showCurrentTimeIndicator;
+
+  /// 선 두께. null이면 1.
+  final double? currentTimeIndicatorLineWidth;
+
+  /// 점(원) 반지름. null이면 5.
+  final double? currentTimeIndicatorCircleRadius;
+
+  /// 현재 시간 표시 라인·윤곽선·배경 색. null이면 빨간색.
+  final Color? currentTimeIndicatorColor;
+
+  /// 현재 시간 글자(시계) 색. null이면 흰색.
+  final Color? currentTimeIndicatorTextColor;
 
   /// Defines the view for the [SfCalendar].
   ///
@@ -2610,6 +2626,22 @@ class SfCalendar extends StatefulWidget {
         showCurrentTimeIndicator,
       ),
     );
+    properties.add(DoubleProperty(
+      'currentTimeIndicatorLineWidth',
+      currentTimeIndicatorLineWidth,
+    ));
+    properties.add(DoubleProperty(
+      'currentTimeIndicatorCircleRadius',
+      currentTimeIndicatorCircleRadius,
+    ));
+    properties.add(ColorProperty(
+      'currentTimeIndicatorColor',
+      currentTimeIndicatorColor,
+    ));
+    properties.add(ColorProperty(
+      'currentTimeIndicatorTextColor',
+      currentTimeIndicatorTextColor,
+    ));
     properties.add(IntProperty('firstDayOfWeek', firstDayOfWeek));
     properties.add(DoubleProperty('headerHeight', headerHeight));
     properties.add(DoubleProperty('viewHeaderHeight', viewHeaderHeight));

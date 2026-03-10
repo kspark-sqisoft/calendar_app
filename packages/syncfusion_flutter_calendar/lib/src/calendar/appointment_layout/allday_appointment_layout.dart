@@ -292,10 +292,9 @@ class _AllDayAppointmentLayoutState extends State<AllDayAppointmentLayout> {
         _updateCalendarStateDetails.allDayAppointmentViewCollection;
     final double cellWidth =
         (widget.width - widget.timeLabelWidth) / widget.visibleDates.length;
-    const double cornerRadius =
-        (kAllDayAppointmentHeight * 0.1) > 2
-            ? 2
-            : kAllDayAppointmentHeight * 0.1;
+    final double cornerRadius = (kAllDayAppointmentHeight * 0.5) < 10
+        ? (kAllDayAppointmentHeight * 0.5)
+        : 10;
 
     final double cellEndPadding = CalendarViewHelper.getCellEndPadding(
       widget.calendar.cellEndPadding,
@@ -324,7 +323,7 @@ class _AllDayAppointmentLayoutState extends State<AllDayAppointmentLayout> {
                 kAllDayAppointmentHeight -
                 1,
           ),
-          const Radius.circular(cornerRadius),
+          Radius.circular(cornerRadius),
         );
       } else {
         rect = RRect.fromRectAndRadius(
@@ -338,7 +337,7 @@ class _AllDayAppointmentLayoutState extends State<AllDayAppointmentLayout> {
                 kAllDayAppointmentHeight -
                 1,
           ),
-          const Radius.circular(cornerRadius),
+          Radius.circular(cornerRadius),
         );
       }
 
@@ -1534,7 +1533,7 @@ class _AllDayAppointmentRenderObject extends CustomCalendarRenderObject {
             color: calendarTheme.selectionBorderColor!,
             width: 2,
           ),
-          borderRadius: const BorderRadius.all(Radius.circular(2)),
+          borderRadius: const BorderRadius.all(Radius.circular(10)),
         );
 
         break;
@@ -1546,7 +1545,7 @@ class _AllDayAppointmentRenderObject extends CustomCalendarRenderObject {
     selectionDecoration ??= BoxDecoration(
       color: Colors.transparent,
       border: Border.all(color: calendarTheme.selectionBorderColor!, width: 2),
-      borderRadius: const BorderRadius.all(Radius.circular(2)),
+      borderRadius: const BorderRadius.all(Radius.circular(10)),
     );
 
     Rect rect;
@@ -1597,7 +1596,7 @@ class _AllDayAppointmentRenderObject extends CustomCalendarRenderObject {
     selectionDecoration ??= BoxDecoration(
       color: Colors.transparent,
       border: Border.all(color: calendarTheme.selectionBorderColor!, width: 2),
-      borderRadius: const BorderRadius.all(Radius.circular(1)),
+      borderRadius: const BorderRadius.all(Radius.circular(10)),
     );
 
     Rect rect = appointmentView.appointmentRect!.outerRect;

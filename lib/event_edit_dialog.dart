@@ -75,6 +75,27 @@ class _EventEditDialogState extends State<_EventEditDialog> {
     'FREQ=MONTHLY': '매월',
   };
 
+  /// 드롭다운은 _recurrenceLabels 키만 사용. FREQ=WEEKLY;BYDAY=TU 등은 'FREQ=WEEKLY'로 매핑.
+  String? get _recurrenceDropdownValue {
+    if (_recurrenceRule == null || _recurrenceRule!.isEmpty) return null;
+    if (_recurrenceLabels.containsKey(_recurrenceRule)) return _recurrenceRule;
+    if (_recurrenceRule!.startsWith('FREQ=WEEKLY')) return 'FREQ=WEEKLY';
+    if (_recurrenceRule!.startsWith('FREQ=DAILY')) return 'FREQ=DAILY';
+    if (_recurrenceRule!.startsWith('FREQ=MONTHLY')) return 'FREQ=MONTHLY';
+    return null;
+  }
+
+  /// Syncfusion은 FREQ=WEEKLY에 BYDAY 필요. 시작일 요일로 보완.
+  static String? _normalizeRecurrenceRule(String? rule, DateTime startDate) {
+    if (rule == null || rule.isEmpty) return rule;
+    if (rule == 'FREQ=WEEKLY' || (rule.startsWith('FREQ=WEEKLY') && !rule.contains('BYDAY'))) {
+      const List<String> byDay = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+      final String day = byDay[startDate.weekday - 1];
+      return rule == 'FREQ=WEEKLY' ? 'FREQ=WEEKLY;BYDAY=$day' : '$rule;BYDAY=$day';
+    }
+    return rule;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -283,13 +304,15 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       ).showSnackBar(const SnackBar(content: Text('종료 시각은 시작 시각보다 뒤여야 합니다.')));
       return;
     }
+    final String? normalizedRule =
+        _normalizeRecurrenceRule(_recurrenceRule, from);
     final event = Event(
       eventName: name,
       from: from,
       to: to,
       background: _background,
       isAllDay: _isAllDay,
-      recurrenceRule: _recurrenceRule,
+      recurrenceRule: normalizedRule,
       recurrenceExceptionDates: widget.existingEvent?.recurrenceExceptionDates,
     );
     Navigator.of(context).pop(event);
@@ -448,7 +471,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
               const Text('반복', style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),
               DropdownButtonFormField<String?>(
-                initialValue: _recurrenceRule,
+                value: _recurrenceDropdownValue,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(

@@ -265,7 +265,7 @@ class AppointmentDragUpdateDetails {
 /// The appointment that dragging ends on view in [SfCalendar]
 ///
 /// Details for [AppointmentDragEndCallback], such as [appointment],
-/// [sourceResource], [targetResource] and [droppingTime].
+/// [sourceResource], [targetResource], [droppingTime] and [dropPosition].
 ///
 /// See also:
 /// * [SfCalendar.onDragEnd], which receives the information.
@@ -278,8 +278,9 @@ class AppointmentDragEndDetails {
     this.appointment,
     this.sourceResource,
     this.targetResource,
-    this.droppingTime,
-  );
+    this.droppingTime, {
+    this.dropPosition,
+  });
 
   /// The dropping appointment.
   final Object? appointment;
@@ -292,6 +293,10 @@ class AppointmentDragEndDetails {
 
   /// The dropping time.
   final DateTime? droppingTime;
+
+  /// Drop position in calendar view local coordinates (e.g. center of dropped appointment).
+  /// Null when drop was invalid or not available.
+  final Offset? dropPosition;
 }
 
 /// Details for [CalendarDetailsCallback], such as [appointments], [date], and

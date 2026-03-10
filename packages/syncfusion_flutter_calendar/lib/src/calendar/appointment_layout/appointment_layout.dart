@@ -629,17 +629,19 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
               (appointmentHeight * (maximumDisplayCount - 1));
         }
 
+        final double h = appointmentHeight > 1 ? appointmentHeight - 1 : 0;
+        final double w = appointmentWidth - cellEndPadding > 0
+            ? appointmentWidth - cellEndPadding
+            : 0;
         final Radius cornerRadius = Radius.circular(
-          (appointmentHeight * 0.1) > 2 ? 2 : (appointmentHeight * 0.1),
+          (h * 0.5) < 10 ? (h * 0.5) : 10,
         );
         final RRect rect = RRect.fromRectAndRadius(
           Rect.fromLTWH(
             widget.isRTL ? xPosition + cellEndPadding : xPosition,
             yPosition,
-            appointmentWidth - cellEndPadding > 0
-                ? appointmentWidth - cellEndPadding
-                : 0,
-            appointmentHeight > 1 ? appointmentHeight - 1 : 0,
+            w,
+            h,
           ),
           cornerRadius,
         );
@@ -841,15 +843,15 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
         yPosition = 0;
       }
 
-      final Radius cornerRadius = Radius.circular(
-        (height * 0.1) > 2 ? 2 : (height * 0.1),
-      );
+      final double h = height > 1 ? height - 1 : 0;
+      final double r = (h * 0.5) < 10 ? (h * 0.5) : 10;
+      final Radius cornerRadius = Radius.circular(r);
       final RRect rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(
           xPosition,
           yPosition,
           appointmentWidth > 1 ? appointmentWidth - 1 : 0,
-          height > 1 ? height - 1 : 0,
+          h,
         ),
         cornerRadius,
       );
@@ -1007,15 +1009,16 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
       }
 
       width = width - cellEndPadding;
+      final double h = appointmentHeight > 1 ? appointmentHeight - 1 : 0;
       final Radius cornerRadius = Radius.circular(
-        (appointmentHeight * 0.1) > 2 ? 2 : (appointmentHeight * 0.1),
+        (h * 0.5) < 10 ? (h * 0.5) : 10,
       );
       final RRect rect = RRect.fromRectAndRadius(
         Rect.fromLTWH(
           widget.isRTL ? xPosition - width : xPosition,
           yPosition,
           width > 0 ? width : 0,
-          appointmentHeight > 1 ? appointmentHeight - 1 : 0,
+          h,
         ),
         cornerRadius,
       );
@@ -1221,8 +1224,9 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
         width = width > minWidth ? width : minWidth;
       }
 
+      final double h = appointmentHeight > 1 ? appointmentHeight - 1 : 0;
       final Radius cornerRadius = Radius.circular(
-        (appointmentHeight * 0.1) > 2 ? 2 : (appointmentHeight * 0.1),
+        (h * 0.5) < 10 ? (h * 0.5) : 10,
       );
       width = width > 1 ? width - 1 : 0;
       final RRect rect = RRect.fromRectAndRadius(
@@ -1230,7 +1234,7 @@ class _AppointmentLayoutState extends State<AppointmentLayout> {
           widget.isRTL ? xPosition - width : xPosition,
           yPosition,
           width,
-          appointmentHeight > 1 ? appointmentHeight - 1 : 0,
+          h,
         ),
         cornerRadius,
       );

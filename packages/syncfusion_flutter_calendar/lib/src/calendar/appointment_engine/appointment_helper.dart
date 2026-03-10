@@ -855,37 +855,46 @@ class AppointmentHelper {
                   _iterateAppointment(app, isTimeline, isAllDay),
             )
             .toList();
-    normalAppointments.sort(
-      (CalendarAppointment app1, CalendarAppointment app2) =>
-          app1.actualStartTime.compareTo(app2.actualStartTime),
+
+    final int timeIntervalMinutes = CalendarViewHelper.getTimeInterval(
+      calendar.timeSlotViewSettings,
     );
-    if (!isTimeline) {
-      normalAppointments.sort(
-        (CalendarAppointment app1, CalendarAppointment app2) =>
-            _orderAppointmentsDescending(app1.isSpanned, app2.isSpanned),
-      );
-      normalAppointments.sort(
-        (CalendarAppointment app1, CalendarAppointment app2) =>
-            _orderAppointmentsDescending(app1.isAllDay, app2.isAllDay),
-      );
-    } else {
-      normalAppointments.sort(
-        (CalendarAppointment app1, CalendarAppointment app2) =>
-            orderAppointmentsAscending(app1.isAllDay, app2.isAllDay),
-      );
-      normalAppointments.sort(
-        (CalendarAppointment app1, CalendarAppointment app2) =>
-            orderAppointmentsAscending(app1.isSpanned, app2.isSpanned),
-      );
-    }
+    normalAppointments.sort(
+      (CalendarAppointment app1, CalendarAppointment app2) {
+        if (app1.isAllDay != app2.isAllDay) {
+          return orderAppointmentsAscending(app1.isAllDay, app2.isAllDay);
+        }
+        if (app1.isSpanned != app2.isSpanned) {
+          return orderAppointmentsAscending(app1.isSpanned, app2.isSpanned);
+        }
+        if (!app1.isAllDay && !app2.isAllDay) {
+          final AppointmentView dummyView = AppointmentView()..appointment = app2;
+          final bool overlaps = _isIntersectingAppointmentInDayView(
+            calendar,
+            view,
+            app1,
+            dummyView,
+            app2,
+            timeIntervalMinutes,
+          );
+          if (overlaps) {
+            final int? order1 =
+                calendar.dataSource?.getDisplayOrder(app1.data);
+            final int? order2 =
+                calendar.dataSource?.getDisplayOrder(app2.data);
+            if (order1 != null && order2 != null && order1 != order2) {
+              return order2.compareTo(order1);
+            }
+          }
+        }
+        return app1.actualStartTime.compareTo(app2.actualStartTime);
+      },
+    );
 
     final Map<int, List<AppointmentView>> dict = <int, List<AppointmentView>>{};
     final List<AppointmentView> processedViews = <AppointmentView>[];
     int maxColsCount = 1;
 
-    final int timeIntervalMinutes = CalendarViewHelper.getTimeInterval(
-      calendar.timeSlotViewSettings,
-    );
     for (int count = 0; count < normalAppointments.length; count++) {
       final CalendarAppointment currentAppointment = normalAppointments[count];
       if ((view == CalendarView.workWeek ||

@@ -1027,6 +1027,11 @@ abstract class CalendarDataSource<T extends Object?>
   /// ```
   T? convertAppointmentToObject(T customData, Appointment appointment) => null;
 
+  /// Optional: return a display order for the given appointment data (e.g. custom
+  /// object). Higher value = drawn on top when appointments overlap. Used in
+  /// timeline view for non-all-day events. Return null to use default (start time) order.
+  int? getDisplayOrder(dynamic appointmentData) => null;
+
   /// Called when loadMoreAppointments function is called from the
   /// loadMoreWidgetBuilder.
   /// Call the [notifyListeners] to notify the calendar for data source changes.
