@@ -141,6 +141,50 @@ class _GettingStartedState extends State<GettingStarted> {
     return null;
   }
 
+  /// 드래그/리사이즈 콜백에서 appointment → Event 변환 (동일 참조 또는 매칭)
+  Event? _getEventFromAppointment(dynamic appointment) {
+    if (appointment is Event) return appointment;
+    return _findEventFromTapped(appointment);
+  }
+
+  /// 드래그 종료: 새 시간으로 Event 갱신 후 DB 저장
+  void _onAppointmentDragEnd(AppointmentDragEndDetails details) {
+    final event = _getEventFromAppointment(details.appointment);
+    if (event == null || details.droppingTime == null) return;
+    final duration = event.to.difference(event.from);
+    final newFrom = details.droppingTime!;
+    final newTo = newFrom.add(duration);
+    event.from = newFrom;
+    event.to = newTo;
+    _persistEventAfterDragOrResize(event);
+  }
+
+  /// 리사이즈 종료: 새 시작/종료로 Event 갱신 후 DB 저장
+  void _onAppointmentResizeEnd(AppointmentResizeEndDetails details) {
+    final event = _getEventFromAppointment(details.appointment);
+    if (event == null || details.startTime == null || details.endTime == null) return;
+    event.from = details.startTime!;
+    event.to = details.endTime!;
+    _persistEventAfterDragOrResize(event);
+  }
+
+  Future<void> _persistEventAfterDragOrResize(Event event) async {
+    try {
+      await EventRepository.instance.update(event);
+      if (!mounted) return;
+      _eventDataSource.notifyListeners(
+        CalendarDataSourceAction.reset,
+        _eventDataSource.appointments!,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('일정 변경 저장 실패: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _openEditEventDialog(Event event) async {
     final updated = await showEventEditDialog(
       context: context,
@@ -326,6 +370,10 @@ class _GettingStartedState extends State<GettingStarted> {
                   showTodayButton: true,
                   showNavigationArrow: true,
                   todayHighlightColor: Colors.blueAccent,
+                  allowDragAndDrop: true,
+                  allowAppointmentResize: true,
+                  onDragEnd: _onAppointmentDragEnd,
+                  onAppointmentResizeEnd: _onAppointmentResizeEnd,
 
                   onTap: (details) {
                     if (details.date != null &&

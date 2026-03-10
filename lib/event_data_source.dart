@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
-class EventDataSource extends CalendarDataSource {
+class EventDataSource extends CalendarDataSource<Event> {
   EventDataSource(List<Event> source) {
     appointments = source;
   }
@@ -38,6 +38,21 @@ class EventDataSource extends CalendarDataSource {
   @override
   List<DateTime>? getRecurrenceExceptionDates(int index) {
     return appointments![index].recurrenceExceptionDates;
+  }
+
+  /// 드래그/리사이즈 후 라이브러리가 Syncfusion Appointment → 우리 Event 로 변환할 때 호출
+  @override
+  Event? convertAppointmentToObject(Event customData, Appointment appointment) {
+    return Event(
+      id: customData.id,
+      eventName: appointment.subject,
+      from: appointment.startTime,
+      to: appointment.endTime,
+      background: appointment.color,
+      isAllDay: appointment.isAllDay,
+      recurrenceRule: customData.recurrenceRule,
+      recurrenceExceptionDates: customData.recurrenceExceptionDates,
+    );
   }
 }
 
