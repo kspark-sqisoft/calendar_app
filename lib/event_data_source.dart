@@ -43,6 +43,7 @@ class EventDataSource extends CalendarDataSource {
 
 class Event {
   Event({
+    this.id,
     required this.eventName,
     required this.from,
     required this.to,
@@ -52,6 +53,8 @@ class Event {
     this.recurrenceExceptionDates,
   });
 
+  /// DB 저장용 primary key (로컬 저장 시 설정됨)
+  int? id;
   String eventName;
   DateTime from;
   DateTime to;
@@ -63,4 +66,9 @@ class Event {
 
   /// 반복 일정에서 제외할 날짜들 (이 날짜에는 일정이 표시되지 않음) recurrenceRule(반복 일정)이 있을 때만 사용
   List<DateTime>? recurrenceExceptionDates;
+
+  @override
+  String toString() {
+    return 'Event(id: $id, eventName: $eventName, from: $from, to: $to, background: $background, isAllDay: $isAllDay, recurrenceRule: $recurrenceRule, recurrenceExceptionDates: $recurrenceExceptionDates)';
+  }
 }
