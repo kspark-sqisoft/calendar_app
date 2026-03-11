@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:calendar_app/event_data_source.dart';
+import 'package:calendar_app/calendar/event_data_source.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -96,16 +96,14 @@ class EventRepository {
   /// 캘린더 표시 기간 저장
   Future<void> setCalendarDateRange(DateTime minDate, DateTime maxDate) async {
     final db = await _getDb();
-    await db.insert(
-      _settingsTable,
-      {'key': _keyCalendarMinDate, 'value': '${minDate.millisecondsSinceEpoch}'},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-    await db.insert(
-      _settingsTable,
-      {'key': _keyCalendarMaxDate, 'value': '${maxDate.millisecondsSinceEpoch}'},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert(_settingsTable, {
+      'key': _keyCalendarMinDate,
+      'value': '${minDate.millisecondsSinceEpoch}',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(_settingsTable, {
+      'key': _keyCalendarMaxDate,
+      'value': '${maxDate.millisecondsSinceEpoch}',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Map -> Event (exceptionDatesJson: "[millis,millis,...]")
@@ -115,7 +113,9 @@ class EventRepository {
     if (jsonStr != null && jsonStr.isNotEmpty) {
       try {
         final list = jsonDecode(jsonStr) as List<dynamic>;
-        exceptionDates = list.map((e) => DateTime.fromMillisecondsSinceEpoch(e as int)).toList();
+        exceptionDates = list
+            .map((e) => DateTime.fromMillisecondsSinceEpoch(e as int))
+            .toList();
       } catch (_) {}
     }
     return Event(
@@ -140,24 +140,24 @@ class EventRepository {
   Future<Event> insert(Event event) async {
     final db = await _getDb();
     String? exceptionJson;
-    if (event.recurrenceExceptionDates != null && event.recurrenceExceptionDates!.isNotEmpty) {
+    if (event.recurrenceExceptionDates != null &&
+        event.recurrenceExceptionDates!.isNotEmpty) {
       exceptionJson = jsonEncode(
-        event.recurrenceExceptionDates!.map((d) => d.millisecondsSinceEpoch).toList(),
+        event.recurrenceExceptionDates!
+            .map((d) => d.millisecondsSinceEpoch)
+            .toList(),
       );
     }
-    final id = await db.insert(
-      _table,
-      {
-        'eventName': event.eventName,
-        'fromMillis': event.from.millisecondsSinceEpoch,
-        'toMillis': event.to.millisecondsSinceEpoch,
-        'colorValue': event.background.value,
-        'isAllDay': event.isAllDay ? 1 : 0,
-        'recurrenceRule': event.recurrenceRule,
-        'exceptionDatesJson': exceptionJson,
-        'displayOrder': event.displayOrder,
-      },
-    );
+    final id = await db.insert(_table, {
+      'eventName': event.eventName,
+      'fromMillis': event.from.millisecondsSinceEpoch,
+      'toMillis': event.to.millisecondsSinceEpoch,
+      'colorValue': event.background.value,
+      'isAllDay': event.isAllDay ? 1 : 0,
+      'recurrenceRule': event.recurrenceRule,
+      'exceptionDatesJson': exceptionJson,
+      'displayOrder': event.displayOrder,
+    });
     return Event(
       id: id,
       eventName: event.eventName,
@@ -175,9 +175,12 @@ class EventRepository {
     if (event.id == null) return;
     final db = await _getDb();
     String? exceptionJson;
-    if (event.recurrenceExceptionDates != null && event.recurrenceExceptionDates!.isNotEmpty) {
+    if (event.recurrenceExceptionDates != null &&
+        event.recurrenceExceptionDates!.isNotEmpty) {
       exceptionJson = jsonEncode(
-        event.recurrenceExceptionDates!.map((d) => d.millisecondsSinceEpoch).toList(),
+        event.recurrenceExceptionDates!
+            .map((d) => d.millisecondsSinceEpoch)
+            .toList(),
       );
     }
     await db.update(

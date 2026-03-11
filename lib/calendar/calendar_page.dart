@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:calendar_app/event_data_source.dart';
-import 'package:calendar_app/event_edit_dialog.dart';
-import 'package:calendar_app/event_repository.dart';
+import 'package:calendar_app/calendar/event_data_source.dart';
+import 'package:calendar_app/calendar/event_edit_dialog.dart';
+import 'package:calendar_app/calendar/event_repository.dart';
 import 'package:calendar_app/extensions/string_color_extension.dart';
 import 'package:calendar_app/main.dart';
 import 'package:flutter/material.dart';
@@ -11,14 +11,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
-class GettingStarted extends ConsumerStatefulWidget {
-  const GettingStarted({super.key});
+class CalendarPage extends ConsumerStatefulWidget {
+  const CalendarPage({super.key});
 
   @override
-  ConsumerState<GettingStarted> createState() => _GettingStartedState();
+  ConsumerState<CalendarPage> createState() => _CalendarPageState();
 }
 
-class _GettingStartedState extends ConsumerState<GettingStarted>
+class _CalendarPageState extends ConsumerState<CalendarPage>
     with SingleTickerProviderStateMixin {
   late CalendarController _calendarController;
   late EventDataSource _eventDataSource;

@@ -1,4 +1,4 @@
-import 'package:calendar_app/event_data_source.dart';
+import 'package:calendar_app/calendar/event_data_source.dart';
 import 'package:flutter/material.dart';
 
 /// 새 이벤트 생성/편집용 다이얼로그.
@@ -45,6 +45,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
   late Color _background;
   late bool _isAllDay;
   String? _recurrenceRule;
+
   /// 반복 일정에서 제외할 날짜들 (날짜만 사용, 시간은 0으로)
   List<DateTime> _recurrenceExceptionDates = [];
 
@@ -98,10 +99,13 @@ class _EventEditDialogState extends State<_EventEditDialog> {
   /// Syncfusion은 FREQ=WEEKLY에 BYDAY 필요. 시작일 요일로 보완.
   static String? _normalizeRecurrenceRule(String? rule, DateTime startDate) {
     if (rule == null || rule.isEmpty) return rule;
-    if (rule == 'FREQ=WEEKLY' || (rule.startsWith('FREQ=WEEKLY') && !rule.contains('BYDAY'))) {
+    if (rule == 'FREQ=WEEKLY' ||
+        (rule.startsWith('FREQ=WEEKLY') && !rule.contains('BYDAY'))) {
       const List<String> byDay = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
       final String day = byDay[startDate.weekday - 1];
-      return rule == 'FREQ=WEEKLY' ? 'FREQ=WEEKLY;BYDAY=$day' : '$rule;BYDAY=$day';
+      return rule == 'FREQ=WEEKLY'
+          ? 'FREQ=WEEKLY;BYDAY=$day'
+          : '$rule;BYDAY=$day';
     }
     return rule;
   }
@@ -119,8 +123,8 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       _recurrenceRule = existing.recurrenceRule;
       _recurrenceExceptionDates = existing.recurrenceExceptionDates != null
           ? existing.recurrenceExceptionDates!
-              .map((d) => DateTime(d.year, d.month, d.day))
-              .toList()
+                .map((d) => DateTime(d.year, d.month, d.day))
+                .toList()
           : [];
     } else {
       final from = widget.initialFrom!;
@@ -320,8 +324,10 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       ).showSnackBar(const SnackBar(content: Text('종료 시각은 시작 시각보다 뒤여야 합니다.')));
       return;
     }
-    final String? normalizedRule =
-        _normalizeRecurrenceRule(_recurrenceRule, from);
+    final String? normalizedRule = _normalizeRecurrenceRule(
+      _recurrenceRule,
+      from,
+    );
     final exceptionDates = _recurrenceExceptionDates.isEmpty
         ? null
         : List<DateTime>.from(_recurrenceExceptionDates);
@@ -351,8 +357,12 @@ class _EventEditDialogState extends State<_EventEditDialog> {
     );
     if (picked == null || !mounted) return;
     final dateOnly = DateTime(picked.year, picked.month, picked.day);
-    final already = _recurrenceExceptionDates.any((d) =>
-        d.year == dateOnly.year && d.month == dateOnly.month && d.day == dateOnly.day);
+    final already = _recurrenceExceptionDates.any(
+      (d) =>
+          d.year == dateOnly.year &&
+          d.month == dateOnly.month &&
+          d.day == dateOnly.day,
+    );
     if (already) return;
     setState(() {
       _recurrenceExceptionDates = List<DateTime>.from(_recurrenceExceptionDates)
@@ -517,7 +527,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
               const Text('반복', style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),
               DropdownButtonFormField<String?>(
-                value: _recurrenceDropdownValue,
+                initialValue: _recurrenceDropdownValue,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(
@@ -557,10 +567,12 @@ class _EventEditDialogState extends State<_EventEditDialog> {
                           setState(() {
                             _recurrenceExceptionDates =
                                 _recurrenceExceptionDates
-                                    .where((x) =>
-                                        x.year != d.year ||
-                                        x.month != d.month ||
-                                        x.day != d.day)
+                                    .where(
+                                      (x) =>
+                                          x.year != d.year ||
+                                          x.month != d.month ||
+                                          x.day != d.day,
+                                    )
                                     .toList();
                           });
                         },
