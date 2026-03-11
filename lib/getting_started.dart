@@ -7,16 +7,17 @@ import 'package:calendar_app/extensions/string_color_extension.dart';
 import 'package:calendar_app/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
-class GettingStarted extends StatefulWidget {
+class GettingStarted extends ConsumerStatefulWidget {
   const GettingStarted({super.key});
 
   @override
-  State<GettingStarted> createState() => _GettingStartedState();
+  ConsumerState<GettingStarted> createState() => _GettingStartedState();
 }
 
-class _GettingStartedState extends State<GettingStarted>
+class _GettingStartedState extends ConsumerState<GettingStarted>
     with SingleTickerProviderStateMixin {
   late CalendarController _calendarController;
   late EventDataSource _eventDataSource;
@@ -996,6 +997,40 @@ class _GettingStartedState extends State<GettingStarted>
         appBar: AppBar(
           title: const Text('캘린더'),
           actions: [
+            IconButton(
+              tooltip: '언어 전환 (EN/KO)',
+              icon: Consumer(
+                builder: (context, ref, _) {
+                  final locale = ref.watch(localeProvider);
+                  return Text(
+                    locale.languageCode == 'ko' ? 'EN' : 'KO',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  );
+                },
+              ),
+              onPressed: () {
+                ref.read(localeProvider.notifier).toggle();
+              },
+            ),
+            IconButton(
+              tooltip: '라이트/다크 테마 전환',
+              icon: Consumer(
+                builder: (context, ref, _) {
+                  final mode = ref.watch(themeModeProvider);
+                  final isDark = mode == ThemeMode.dark;
+                  return Icon(
+                    isDark ? Icons.light_mode : Icons.dark_mode,
+                    size: 24,
+                  );
+                },
+              ),
+              onPressed: () {
+                ref.read(themeModeProvider.notifier).toggle();
+              },
+            ),
             PopupMenuButton<CalendarView>(
               tooltip: '뷰 선택',
               child: Padding(
