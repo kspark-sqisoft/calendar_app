@@ -6,13 +6,17 @@ import 'package:calendar_app/calendar/event_edit_dialog.dart';
 import 'package:calendar_app/calendar/event_repository.dart';
 import 'package:calendar_app/extensions/string_color_extension.dart';
 import 'package:calendar_app/main.dart';
+import 'package:calendar_app/plan/plan_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 class CalendarPage extends ConsumerStatefulWidget {
-  const CalendarPage({super.key});
+  const CalendarPage({super.key, required this.planId});
+
+  final int planId;
 
   @override
   ConsumerState<CalendarPage> createState() => _CalendarPageState();
@@ -27,6 +31,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
   final List<Event> _events = [];
   bool _isLoading = true;
   String? _loadError;
+  String? _planName;
 
   /// 우클릭 메뉴용: 마지막으로 탭한 셀의 날짜 (우클릭 시 이 날짜에 이벤트 생성)
   DateTime? _contextMenuDate;
@@ -143,9 +148,10 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
   /// 전체 데이터 가져와서 JSON 팝업으로 표시 (일정 + 캘린더 표시 기간 포함)
   Future<void> _showAllDataPopup() async {
     try {
-      final list = await EventRepository.instance.getAll();
+      final list = _events;
       final jsonList = list.map(_eventToJson).toList();
       final fullData = <String, dynamic>{
+        'broadcastPlanName': _planName,
         'calendarDateRange': {
           'minDate': _calendarMinDate.toIso8601String(),
           'maxDate': _calendarMaxDate.toIso8601String(),
@@ -227,14 +233,17 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
 
   Future<void> _loadEvents() async {
     try {
-      final list = await EventRepository.instance.getAll();
-      final savedRange = await EventRepository.instance.getCalendarDateRange();
+      final planId = widget.planId;
+      final list = await EventRepository.instance.getAllByPlanId(planId);
+      final savedRange = await EventRepository.instance.getPlanDateRange(planId);
+      final plan = await PlanRepository.instance.getById(planId);
       logger.d('Loaded events: $list'.toGreen);
       if (mounted) {
         setState(() {
           _events.clear();
           _events.addAll(list);
           _normalizeDisplayOrderForOverlappingGroups();
+          _planName = plan?.name;
           if (savedRange != null) {
             _calendarMinDate = savedRange.minDate;
             _calendarMaxDate = savedRange.maxDate;
@@ -285,7 +294,10 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                 initialFrom: initialFrom,
                 initialTo: initialTo,
               );
-              if (event != null && mounted) _addEvent(event);
+              if (event != null && mounted) {
+                event.planId = widget.planId;
+                _addEvent(event);
+              }
             });
           },
         ),
@@ -689,7 +701,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                     );
                   }
                 });
-                EventRepository.instance.setCalendarDateRange(
+                EventRepository.instance.setPlanDateRange(
+                  widget.planId,
                   _calendarMinDate,
                   _calendarMaxDate,
                 );
@@ -717,7 +730,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                     picked.day,
                   );
                 });
-                EventRepository.instance.setCalendarDateRange(
+                EventRepository.instance.setPlanDateRange(
+                  widget.planId,
                   _calendarMinDate,
                   _calendarMaxDate,
                 );
@@ -1143,6 +1157,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     final index = _events.indexOf(oldEvent);
     if (index < 0) return;
     updatedEvent.id = oldEvent.id;
+    updatedEvent.planId = oldEvent.planId ?? widget.planId;
     updatedEvent.displayOrder = oldEvent.displayOrder;
     try {
       await EventRepository.instance.update(updatedEvent);
@@ -1224,7 +1239,11 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       onKeyEvent: _handleKeyEvent,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('방송계획'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          ),
+          title: Text(_planName ?? '방송계획'),
           actions: [
             IconButton(
               tooltip: '언어 전환 (EN/KO)',

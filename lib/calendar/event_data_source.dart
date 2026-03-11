@@ -46,6 +46,7 @@ class EventDataSource extends CalendarDataSource<Event> {
   Event? convertAppointmentToObject(Event customData, Appointment appointment) {
     return Event(
       id: customData.id,
+      planId: customData.planId,
       eventName: appointment.subject,
       from: appointment.startTime,
       to: appointment.endTime,
@@ -70,6 +71,7 @@ class EventDataSource extends CalendarDataSource<Event> {
 class Event {
   Event({
     this.id,
+    this.planId,
     required this.eventName,
     required this.from,
     required this.to,
@@ -83,6 +85,9 @@ class Event {
 
   /// DB 저장용 primary key (로컬 저장 시 설정됨)
   int? id;
+
+  /// 방송 계획 ID (어느 계획의 일정인지)
+  int? planId;
   String eventName;
   DateTime from;
   DateTime to;
