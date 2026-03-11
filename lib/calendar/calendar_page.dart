@@ -1072,6 +1072,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
         ? '${event.from.year}.${event.from.month}.${event.from.day} (하루 종일)'
         : '${_formatTime(event.from)} - ${_formatTime(event.to)}';
     final String tooltipMessage = '${event.eventName}\n$timeText';
+    final isRecurring = event.recurrenceRule != null &&
+        event.recurrenceRule!.isNotEmpty;
     final content = Tooltip(
       message: tooltipMessage,
       child: Container(
@@ -1082,16 +1084,34 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
           color: event.background.withValues(alpha: opacity),
           borderRadius: BorderRadius.circular(10),
         ),
-        alignment: Alignment.center,
-        child: isOnAir
-            ? Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.live_tv, size: 22, color: Colors.white),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Align(
+              alignment: Alignment.center,
+              child: isOnAir
+                  ? Row(
+                      mainAxisSize: MainAxisSize.max,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.live_tv, size: 22, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            event.eventName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
                       event.eventName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1102,20 +1122,19 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
-              )
-            : Text(
-                event.eventName,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13,
+            ),
+            if (isRecurring)
+              Positioned(
+                right: 2,
+                bottom: 2,
+                child: Icon(
+                  Icons.autorenew,
+                  size: 14,
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
+          ],
+        ),
       ),
     );
     if (isOnAir) {

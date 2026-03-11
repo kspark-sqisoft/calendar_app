@@ -346,16 +346,14 @@ class _PlanListPageState extends ConsumerState<PlanListPage> {
                                           ],
                                         ),
                                       ),
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.preview_rounded,
-                                          color: colorScheme.primary,
-                                          size: 22,
-                                        ),
+                                      FilledButton.icon(
                                         onPressed: () => showPlanPreviewDialog(context, plan: plan),
-                                        tooltip: '미리보기',
-                                        style: IconButton.styleFrom(
-                                          backgroundColor: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                                        icon: const Icon(Icons.preview_rounded, size: 20),
+                                        label: const Text('미리보기'),
+                                        style: FilledButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          backgroundColor: colorScheme.primaryContainer,
+                                          foregroundColor: colorScheme.onPrimaryContainer,
                                         ),
                                       ),
                                       const SizedBox(width: 4),
