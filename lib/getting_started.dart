@@ -1401,6 +1401,8 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
                           timeIntervalWidth: 75,
                           timeIntervalHeight: 60,
                           timelineAppointmentHeight: 60,
+                          dateFormat: 'M월 d일',
+                          dayFormat: 'EE',
                         ),
                         monthViewSettings: MonthViewSettings(showAgenda: true),
 
