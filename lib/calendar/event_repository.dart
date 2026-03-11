@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:calendar_app/calendar/event_data_source.dart';
+import 'package:calendar_app/creta/creta_book.dart';
+import 'package:calendar_app/creta/creta_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -13,7 +15,7 @@ class EventRepository {
   static const _table = 'events';
   static const _settingsTable = 'settings';
   static const _dbName = 'calendar_events.db';
-  static const _version = 3;
+  static const _version = 4;
 
   static const _keyCalendarMinDate = 'calendarMinDate';
   static const _keyCalendarMaxDate = 'calendarMaxDate';
@@ -35,7 +37,8 @@ class EventRepository {
             isAllDay INTEGER NOT NULL,
             recurrenceRule TEXT,
             exceptionDatesJson TEXT,
-            displayOrder INTEGER
+            displayOrder INTEGER,
+            cretaBookIdsJson TEXT
           )
         ''');
         await db.execute('''
@@ -58,6 +61,11 @@ class EventRepository {
               value TEXT NOT NULL
             )
           ''');
+        }
+        if (oldVersion < 4) {
+          await db.execute(
+            'ALTER TABLE $_table ADD COLUMN cretaBookIdsJson TEXT',
+          );
         }
       },
     );
@@ -106,8 +114,11 @@ class EventRepository {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  /// Map -> Event (exceptionDatesJson: "[millis,millis,...]")
-  Event _rowToEvent(Map<String, Object?> row) {
+  /// Map -> Event (exceptionDatesJson: "[millis,millis,...]", cretaBookIdsJson: "[id,id,...]")
+  Event _rowToEvent(
+    Map<String, Object?> row,
+    Map<int, CretaBook> cretaBookById,
+  ) {
     List<DateTime>? exceptionDates;
     final jsonStr = row['exceptionDatesJson'] as String?;
     if (jsonStr != null && jsonStr.isNotEmpty) {
@@ -115,6 +126,17 @@ class EventRepository {
         final list = jsonDecode(jsonStr) as List<dynamic>;
         exceptionDates = list
             .map((e) => DateTime.fromMillisecondsSinceEpoch(e as int))
+            .toList();
+      } catch (_) {}
+    }
+    List<CretaBook>? cretaBooks;
+    final idsStr = row['cretaBookIdsJson'] as String?;
+    if (idsStr != null && idsStr.isNotEmpty) {
+      try {
+        final list = jsonDecode(idsStr) as List<dynamic>;
+        cretaBooks = list
+            .map((e) => cretaBookById[e as int])
+            .whereType<CretaBook>()
             .toList();
       } catch (_) {}
     }
@@ -128,13 +150,16 @@ class EventRepository {
       recurrenceRule: row['recurrenceRule'] as String?,
       recurrenceExceptionDates: exceptionDates,
       displayOrder: row['displayOrder'] as int?,
+      cretaBooks: cretaBooks,
     );
   }
 
   Future<List<Event>> getAll() async {
     final db = await _getDb();
+    final allBooks = await CretaRepository.instance.getAll();
+    final cretaBookById = {for (final b in allBooks) if (b.id != null) b.id!: b};
     final rows = await db.query(_table, orderBy: 'fromMillis ASC');
-    return rows.map(_rowToEvent).toList();
+    return rows.map((r) => _rowToEvent(r, cretaBookById)).toList();
   }
 
   Future<Event> insert(Event event) async {
@@ -148,6 +173,24 @@ class EventRepository {
             .toList(),
       );
     }
+    List<CretaBook>? filteredCretaBooks;
+    String? cretaBookIdsJson;
+    if (event.cretaBooks != null && event.cretaBooks!.isNotEmpty) {
+      final allBooks = await CretaRepository.instance.getAll();
+      final validIds = allBooks.map((b) => b.id).whereType<int>().toSet();
+      final idsToSave = event.cretaBooks!
+          .map((b) => b.id)
+          .whereType<int>()
+          .where(validIds.contains)
+          .toList();
+      cretaBookIdsJson =
+          idsToSave.isEmpty ? null : jsonEncode(idsToSave);
+      filteredCretaBooks = idsToSave.isEmpty
+          ? null
+          : idsToSave
+              .map((id) => allBooks.firstWhere((b) => b.id == id))
+              .toList();
+    }
     final id = await db.insert(_table, {
       'eventName': event.eventName,
       'fromMillis': event.from.millisecondsSinceEpoch,
@@ -157,6 +200,7 @@ class EventRepository {
       'recurrenceRule': event.recurrenceRule,
       'exceptionDatesJson': exceptionJson,
       'displayOrder': event.displayOrder,
+      'cretaBookIdsJson': cretaBookIdsJson,
     });
     return Event(
       id: id,
@@ -168,6 +212,7 @@ class EventRepository {
       recurrenceRule: event.recurrenceRule,
       recurrenceExceptionDates: event.recurrenceExceptionDates,
       displayOrder: event.displayOrder,
+      cretaBooks: filteredCretaBooks ?? event.cretaBooks,
     );
   }
 
@@ -183,6 +228,20 @@ class EventRepository {
             .toList(),
       );
     }
+    String? cretaBookIdsJson;
+    if (event.cretaBooks != null && event.cretaBooks!.isNotEmpty) {
+      final validIds = (await CretaRepository.instance.getAll())
+          .map((b) => b.id)
+          .whereType<int>()
+          .toSet();
+      final idsToSave = event.cretaBooks!
+          .map((b) => b.id)
+          .whereType<int>()
+          .where(validIds.contains)
+          .toList();
+      cretaBookIdsJson =
+          idsToSave.isEmpty ? null : jsonEncode(idsToSave);
+    }
     await db.update(
       _table,
       {
@@ -194,6 +253,7 @@ class EventRepository {
         'recurrenceRule': event.recurrenceRule,
         'exceptionDatesJson': exceptionJson,
         'displayOrder': event.displayOrder,
+        'cretaBookIdsJson': cretaBookIdsJson,
       },
       where: 'id = ?',
       whereArgs: [event.id],

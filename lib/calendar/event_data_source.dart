@@ -1,3 +1,4 @@
+import 'package:calendar_app/creta/creta_book.dart';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
@@ -53,6 +54,7 @@ class EventDataSource extends CalendarDataSource<Event> {
       recurrenceRule: customData.recurrenceRule,
       recurrenceExceptionDates: customData.recurrenceExceptionDates,
       displayOrder: customData.displayOrder,
+      cretaBooks: customData.cretaBooks,
     );
   }
 
@@ -76,6 +78,7 @@ class Event {
     this.recurrenceRule,
     this.recurrenceExceptionDates,
     this.displayOrder,
+    this.cretaBooks,
   });
 
   /// DB 저장용 primary key (로컬 저장 시 설정됨)
@@ -95,8 +98,11 @@ class Event {
   /// 타임라인에서 겹칠 때 그리는 순서 (큰 값일수록 위). 드래그로 이동한 이벤트가 위로 가도록 사용. 온종일 제외.
   int? displayOrder;
 
+  /// 방송할 크레타북 목록 (멀티 선택)
+  List<CretaBook>? cretaBooks;
+
   @override
   String toString() {
-    return 'Event(id: $id, eventName: $eventName, from: $from, to: $to, background: $background, isAllDay: $isAllDay, recurrenceRule: $recurrenceRule, recurrenceExceptionDates: $recurrenceExceptionDates, displayOrder: $displayOrder)';
+    return 'Event(id: $id, eventName: $eventName, from: $from, to: $to, background: $background, isAllDay: $isAllDay, recurrenceRule: $recurrenceRule, recurrenceExceptionDates: $recurrenceExceptionDates, displayOrder: $displayOrder, cretaBooks: $cretaBooks)';
   }
 }

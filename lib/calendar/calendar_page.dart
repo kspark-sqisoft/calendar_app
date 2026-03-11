@@ -128,6 +128,15 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
           ?.map((d) => d.toIso8601String())
           .toList(),
       'displayOrder': e.displayOrder,
+      'cretaBooks': e.cretaBooks
+          ?.map(
+            (b) => {
+              'id': b.id,
+              'name': b.name,
+              'createdAt': b.createdAt.toIso8601String(),
+            },
+          )
+          .toList(),
     };
   }
 
@@ -1215,7 +1224,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       onKeyEvent: _handleKeyEvent,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('캘린더'),
+          title: const Text('방송계획'),
           actions: [
             IconButton(
               tooltip: '언어 전환 (EN/KO)',

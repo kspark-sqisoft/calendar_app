@@ -1,4 +1,6 @@
 import 'package:calendar_app/calendar/event_data_source.dart';
+import 'package:calendar_app/creta/creta_book.dart';
+import 'package:calendar_app/creta/creta_repository.dart';
 import 'package:flutter/material.dart';
 
 /// 새 이벤트 생성/편집용 다이얼로그.
@@ -48,6 +50,12 @@ class _EventEditDialogState extends State<_EventEditDialog> {
 
   /// 반복 일정에서 제외할 날짜들 (날짜만 사용, 시간은 0으로)
   List<DateTime> _recurrenceExceptionDates = [];
+
+  /// 방송할 크레타북 (멀티 선택)
+  List<CretaBook> _selectedCretaBooks = [];
+  List<CretaBook> _allCretaBooks = [];
+  bool _cretaBooksLoaded = false;
+  late final ScrollController _cretaBooksScrollController;
 
   late final TextEditingController _fromYear;
   late final TextEditingController _fromMonth;
@@ -126,6 +134,8 @@ class _EventEditDialogState extends State<_EventEditDialog> {
                 .map((d) => DateTime(d.year, d.month, d.day))
                 .toList()
           : [];
+      _selectedCretaBooks =
+          existing.cretaBooks != null ? List.from(existing.cretaBooks!) : [];
     } else {
       final from = widget.initialFrom!;
       _nameController = TextEditingController(text: '새 일정');
@@ -135,7 +145,10 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       _isAllDay = false;
       _recurrenceRule = null;
       _recurrenceExceptionDates = [];
+      _selectedCretaBooks = [];
     }
+    _cretaBooksScrollController = ScrollController();
+    _loadCretaBooks();
     _fromYear = TextEditingController(text: '${_from.year}');
     _fromMonth = TextEditingController(text: '${_from.month}');
     _fromDay = TextEditingController(text: '${_from.day}');
@@ -146,6 +159,33 @@ class _EventEditDialogState extends State<_EventEditDialog> {
     _toDay = TextEditingController(text: '${_to.day}');
     _toHour = TextEditingController(text: '${_to.hour}');
     _toMinute = TextEditingController(text: '${_to.minute}');
+  }
+
+  Future<void> _loadCretaBooks() async {
+    final books = await CretaRepository.instance.getAll();
+    if (mounted) {
+      setState(() {
+        _allCretaBooks = books;
+        // 삭제된 크레타북은 선택 목록에서 제거
+        final validIds = books.map((b) => b.id).whereType<int>().toSet();
+        _selectedCretaBooks = _selectedCretaBooks
+            .where((b) => b.id != null && validIds.contains(b.id))
+            .toList();
+        _cretaBooksLoaded = true;
+      });
+    }
+  }
+
+  void _toggleCretaBook(CretaBook book) {
+    setState(() {
+      final isSelected = _selectedCretaBooks.any((b) => b.id == book.id);
+      if (isSelected) {
+        _selectedCretaBooks =
+            _selectedCretaBooks.where((b) => b.id != book.id).toList();
+      } else {
+        _selectedCretaBooks = List.from(_selectedCretaBooks)..add(book);
+      }
+    });
   }
 
   void _syncFromToFields() {
@@ -239,6 +279,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
 
   @override
   void dispose() {
+    _cretaBooksScrollController.dispose();
     _nameController.dispose();
     _fromYear.dispose();
     _fromMonth.dispose();
@@ -331,6 +372,9 @@ class _EventEditDialogState extends State<_EventEditDialog> {
     final exceptionDates = _recurrenceExceptionDates.isEmpty
         ? null
         : List<DateTime>.from(_recurrenceExceptionDates);
+    final cretaBooks = _selectedCretaBooks.isEmpty
+        ? null
+        : List<CretaBook>.from(_selectedCretaBooks);
     final event = Event(
       eventName: name,
       from: from,
@@ -339,6 +383,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       isAllDay: _isAllDay,
       recurrenceRule: normalizedRule,
       recurrenceExceptionDates: exceptionDates,
+      cretaBooks: cretaBooks,
     );
     if (widget.existingEvent != null) {
       event.id = widget.existingEvent!.id;
@@ -523,6 +568,50 @@ class _EventEditDialogState extends State<_EventEditDialog> {
                   );
                 }).toList(),
               ),
+              const SizedBox(height: 16),
+              const Text(
+                '방송할 크레타북',
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 4),
+              if (!_cretaBooksLoaded)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (_allCretaBooks.isEmpty)
+                const Text(
+                  '등록된 크레타북이 없습니다.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                )
+              else
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: Scrollbar(
+                    controller: _cretaBooksScrollController,
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _cretaBooksScrollController,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _allCretaBooks.map((book) {
+                          final isSelected =
+                              _selectedCretaBooks.any((b) => b.id == book.id);
+                          return FilterChip(
+                            label: Text(book.name),
+                            selected: isSelected,
+                            onSelected: (_) => _toggleCretaBook(book),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 16),
               const Text('반복', style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),

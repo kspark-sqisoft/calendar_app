@@ -13,22 +13,18 @@ final routerProvider = Provider(
     },
     routes: <RouteBase>[
       ShellRoute(
-        builder: (context, state, child) => _MainScaffold(
-          currentLocation: state.matchedLocation,
-          child: child,
-        ),
+        builder: (context, state, child) =>
+            _MainScaffold(currentLocation: state.matchedLocation, child: child),
         routes: <RouteBase>[
           GoRoute(
             path: '/calendar',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: CalendarPage(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: CalendarPage()),
           ),
           GoRoute(
             path: '/creta',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: CretaPage(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: CretaPage()),
           ),
         ],
       ),
@@ -37,10 +33,7 @@ final routerProvider = Provider(
 );
 
 class _MainScaffold extends StatelessWidget {
-  const _MainScaffold({
-    required this.currentLocation,
-    required this.child,
-  });
+  const _MainScaffold({required this.currentLocation, required this.child});
 
   final String currentLocation;
   final Widget child;
@@ -60,11 +53,11 @@ class _MainScaffold extends StatelessWidget {
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today),
-            label: '캘린더',
+            label: '방송계획',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.brush_outlined),
-            label: 'Creta',
+            label: '크레타북',
           ),
         ],
       ),
