@@ -1,4 +1,5 @@
 import 'package:calendar_app/plan/broadcast_plan.dart';
+import 'package:calendar_app/plan/plan_edit_dialog.dart';
 import 'package:calendar_app/plan/plan_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -70,6 +71,21 @@ class _PlanListPageState extends ConsumerState<PlanListPage> {
 
   String _formatDateRange(DateTime min, DateTime max) {
     return '${min.year}.${min.month}.${min.day} ~ ${max.year}.${max.month}.${max.day}';
+  }
+
+  Future<void> _editPlan(BroadcastPlan plan) async {
+    final updated = await showPlanEditDialog(context, plan: plan);
+    if (updated == null || !mounted) return;
+    try {
+      await PlanRepository.instance.update(updated);
+      if (mounted) _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('수정 실패: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _deletePlan(BroadcastPlan plan) async {
@@ -299,6 +315,18 @@ class _PlanListPageState extends ConsumerState<PlanListPage> {
                                               ),
                                             ),
                                           ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.edit_outlined,
+                                          color: colorScheme.primary,
+                                          size: 22,
+                                        ),
+                                        onPressed: () => _editPlan(plan),
+                                        tooltip: '편집',
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: colorScheme.primaryContainer.withValues(alpha: 0.5),
                                         ),
                                       ),
                                       IconButton(

@@ -6,6 +6,7 @@ import 'package:calendar_app/calendar/event_edit_dialog.dart';
 import 'package:calendar_app/calendar/event_repository.dart';
 import 'package:calendar_app/extensions/string_color_extension.dart';
 import 'package:calendar_app/main.dart';
+import 'package:calendar_app/plan/plan_name_edit_dialog.dart';
 import 'package:calendar_app/plan/plan_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -227,6 +228,26 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('데이터 로드 실패: $e')));
+      }
+    }
+  }
+
+  Future<void> _editPlanName() async {
+    final plan = await PlanRepository.instance.getById(widget.planId);
+    if (plan == null || !mounted) return;
+    final newName = await showPlanNameEditDialog(
+      context,
+      initialName: plan.name,
+    );
+    if (newName == null || newName == plan.name || !mounted) return;
+    try {
+      await PlanRepository.instance.update(plan.copyWith(name: newName));
+      if (mounted) setState(() => _planName = newName);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('수정 실패: $e')));
       }
     }
   }
@@ -1245,7 +1266,30 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
           ),
-          title: Text(_planName ?? '방송계획'),
+          title: InkWell(
+            onTap: _editPlanName,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      _planName ?? '방송계획',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
           actions: [
             IconButton(
               tooltip: '언어 전환 (EN/KO)',
