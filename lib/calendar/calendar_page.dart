@@ -1544,24 +1544,27 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                               return;
                             }
                           }
-                          // 빈 곳 우클릭이거나 올데이 일정: 기존처럼 선택된 일정 메뉴 또는 날짜 메뉴
+                          // 슬롯(빈 셀) 우클릭: 항상 새 이벤트 메뉴. 겹침에서 선택된 일정이 있어도 슬롯을 눌렀으면 날짜 메뉴.
+                          if (details != null &&
+                              details.targetElement ==
+                                  CalendarElement.calendarCell &&
+                              details.date != null) {
+                            final date = details.date!;
+                            _contextMenuDate = date;
+                            _calendarController.selectedDate = date;
+                            if (mounted) setState(() {});
+                            _showContextMenu(date, globalPos);
+                            return;
+                          }
+                          // 그 외(헤더 등)이고, 선택된 일정이 있으면 그 일정 순서 메뉴
                           if (_lastTappedEvent != null &&
                               !_lastTappedEvent!.isAllDay) {
                             _showEventContextMenu(_lastTappedEvent!, globalPos);
                           } else {
-                            // 우클릭한 지점의 날짜·시간을 사용하고, 해당 셀을 선택
-                            final DateTime date;
-                            if (details != null && details.date != null) {
-                              date = details.date!;
-                              _contextMenuDate = date;
-                              _calendarController.selectedDate = date;
-                              if (mounted) setState(() {});
-                            } else {
-                              date =
-                                  _contextMenuDate ??
-                                  _calendarController.displayDate ??
-                                  DateTime.now();
-                            }
+                            final date =
+                                _contextMenuDate ??
+                                _calendarController.displayDate ??
+                                DateTime.now();
                             _showContextMenu(date, globalPos);
                           }
                         }
