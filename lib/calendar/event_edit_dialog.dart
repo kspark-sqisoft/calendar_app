@@ -48,6 +48,9 @@ class _EventEditDialogState extends State<_EventEditDialog> {
   late bool _isAllDay;
   String? _recurrenceRule;
 
+  /// 매주 반복 시 반복할 요일 (1=월 … 7=일). 비어 있으면 시작일 요일 하나로 간주.
+  Set<int> _weeklyRecurrenceWeekdays = {};
+
   /// 반복 일정에서 제외할 날짜들 (날짜만 사용, 시간은 0으로)
   List<DateTime> _recurrenceExceptionDates = [];
 
@@ -94,6 +97,31 @@ class _EventEditDialogState extends State<_EventEditDialog> {
     'FREQ=MONTHLY': '매월',
   };
 
+  /// BYDAY 문자열(MO,TU,WE 등) → 요일 Set (1=월 … 7=일). rule에 BYDAY가 없으면 null.
+  static Set<int>? _parseWeeklyByDay(String? rule) {
+    if (rule == null || rule.isEmpty || !rule.contains('BYDAY=')) return null;
+    final byDayCandidates = rule.split(';').where((s) => s.startsWith('BYDAY='));
+    final byDayPart = byDayCandidates.isEmpty ? null : byDayCandidates.first;
+    if (byDayPart == null) return null;
+    final value = byDayPart.substring(6).trim();
+    if (value.isEmpty) return null;
+    const Map<String, int> dayToWeekday = {
+      'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6, 'SU': 7,
+    };
+    final out = <int>{};
+    for (final part in value.split(',')) {
+      final w = dayToWeekday[part.trim().toUpperCase()];
+      if (w != null) out.add(w);
+    }
+    return out.isEmpty ? null : out;
+  }
+
+  /// 요일 Set (1=월 … 7=일) → BYDAY 값 문자열 (MO,TU,WE)
+  static String _weeklyWeekdaysToByDay(Set<int> weekdays) {
+    const List<String> codes = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+    return (weekdays.toList()..sort()).map((w) => codes[w - 1]).join(',');
+  }
+
   /// 드롭다운은 _recurrenceLabels 키만 사용. FREQ=WEEKLY;BYDAY=TU 등은 'FREQ=WEEKLY'로 매핑.
   String? get _recurrenceDropdownValue {
     if (_recurrenceRule == null || _recurrenceRule!.isEmpty) return null;
@@ -129,6 +157,8 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       _background = existing.background;
       _isAllDay = existing.isAllDay;
       _recurrenceRule = existing.recurrenceRule;
+      _weeklyRecurrenceWeekdays = _parseWeeklyByDay(existing.recurrenceRule) ??
+          {existing.from.weekday};
       _recurrenceExceptionDates = existing.recurrenceExceptionDates != null
           ? existing.recurrenceExceptionDates!
                 .map((d) => DateTime(d.year, d.month, d.day))
@@ -144,6 +174,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       _background = Colors.blue;
       _isAllDay = false;
       _recurrenceRule = null;
+      _weeklyRecurrenceWeekdays = {from.weekday};
       _recurrenceExceptionDates = [];
       _selectedCretaBooks = [];
     }
@@ -365,10 +396,15 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       ).showSnackBar(const SnackBar(content: Text('종료 시각은 시작 시각보다 뒤여야 합니다.')));
       return;
     }
-    final String? normalizedRule = _normalizeRecurrenceRule(
-      _recurrenceRule,
-      from,
-    );
+    final String? normalizedRule;
+    if (_recurrenceDropdownValue == 'FREQ=WEEKLY') {
+      final weekdays = _weeklyRecurrenceWeekdays.isEmpty
+          ? {from.weekday}
+          : _weeklyRecurrenceWeekdays;
+      normalizedRule = 'FREQ=WEEKLY;BYDAY=${_weeklyWeekdaysToByDay(weekdays)}';
+    } else {
+      normalizedRule = _normalizeRecurrenceRule(_recurrenceRule, from);
+    }
     final exceptionDates = _recurrenceExceptionDates.isEmpty
         ? null
         : List<DateTime>.from(_recurrenceExceptionDates);
@@ -630,8 +666,45 @@ class _EventEditDialogState extends State<_EventEditDialog> {
                     child: Text(e.value),
                   );
                 }).toList(),
-                onChanged: (v) => setState(() => _recurrenceRule = v),
+                onChanged: (v) {
+                  setState(() {
+                    _recurrenceRule = v;
+                    if (v == 'FREQ=WEEKLY' && _weeklyRecurrenceWeekdays.isEmpty) {
+                      _weeklyRecurrenceWeekdays = {_from.weekday};
+                    }
+                  });
+                },
               ),
+              if (_recurrenceDropdownValue == 'FREQ=WEEKLY') ...[
+                const SizedBox(height: 12),
+                const Text(
+                  '반복 요일',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (int w = 1; w <= 7; w++)
+                      FilterChip(
+                        label: Text(const ['월', '화', '수', '목', '금', '토', '일'][w - 1]),
+                        selected: _weeklyRecurrenceWeekdays.contains(w),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _weeklyRecurrenceWeekdays = Set.from(_weeklyRecurrenceWeekdays)..add(w);
+                            } else {
+                              if (_weeklyRecurrenceWeekdays.length > 1) {
+                                _weeklyRecurrenceWeekdays = Set.from(_weeklyRecurrenceWeekdays)..remove(w);
+                              }
+                            }
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ],
               if (_recurrenceRule != null && _recurrenceRule!.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 const Text(
