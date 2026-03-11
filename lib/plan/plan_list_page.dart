@@ -1,4 +1,5 @@
 import 'package:calendar_app/plan/broadcast_plan.dart';
+import 'package:calendar_app/plan/broadcast_devices_dialog.dart';
 import 'package:calendar_app/plan/plan_edit_dialog.dart';
 import 'package:calendar_app/plan/plan_repository.dart';
 import 'package:flutter/material.dart';
@@ -83,6 +84,33 @@ class _PlanListPageState extends ConsumerState<PlanListPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('수정 실패: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _broadcastPlan(BroadcastPlan plan) async {
+    final selectedIds = await showBroadcastDevicesDialog(context: context, plan: plan);
+    if (selectedIds == null || !mounted) return;
+    try {
+      final updated = plan.copyWith(deviceIds: selectedIds);
+      await PlanRepository.instance.update(updated);
+      if (mounted) {
+        _load();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              selectedIds.isEmpty
+                  ? '지정 디바이스를 해제했습니다.'
+                  : '${selectedIds.length}개 디바이스에 방송하도록 지정했습니다.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('저장 실패: $e')),
         );
       }
     }
@@ -317,6 +345,17 @@ class _PlanListPageState extends ConsumerState<PlanListPage> {
                                           ],
                                         ),
                                       ),
+                                      FilledButton.icon(
+                                        onPressed: () => _broadcastPlan(plan),
+                                        icon: const Icon(Icons.cast_rounded, size: 20),
+                                        label: const Text('방송 하기'),
+                                        style: FilledButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          backgroundColor: colorScheme.tertiaryContainer,
+                                          foregroundColor: colorScheme.onTertiaryContainer,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
                                       IconButton(
                                         icon: Icon(
                                           Icons.edit_outlined,

@@ -1,5 +1,6 @@
 import 'package:calendar_app/calendar/calendar_page.dart';
 import 'package:calendar_app/creta/creta_page.dart';
+import 'package:calendar_app/device/device_page.dart';
 import 'package:calendar_app/plan/plan_list_page.dart';
 import 'package:calendar_app/plan/plan_new_page.dart';
 import 'package:flutter/material.dart';
@@ -45,6 +46,11 @@ final routerProvider = Provider(
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: CretaPage()),
           ),
+          GoRoute(
+            path: '/devices',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: DevicePage()),
+          ),
         ],
       ),
     ],
@@ -57,8 +63,11 @@ class _MainScaffold extends StatelessWidget {
   final String currentLocation;
   final Widget child;
 
-  int get _currentIndex =>
-      currentLocation.startsWith('/creta') ? 1 : 0;
+  int get _currentIndex {
+    if (currentLocation.startsWith('/creta')) return 1;
+    if (currentLocation.startsWith('/devices')) return 2;
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +76,7 @@ class _MainScaffold extends StatelessWidget {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (int index) {
-          final path = index == 0 ? '/plans' : '/creta';
+          final path = index == 0 ? '/plans' : (index == 1 ? '/creta' : '/devices');
           if (currentLocation != path) context.go(path);
         },
         items: const <BottomNavigationBarItem>[
@@ -78,6 +87,10 @@ class _MainScaffold extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.brush_outlined),
             label: '크레타북',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.devices),
+            label: '디바이스',
           ),
         ],
       ),

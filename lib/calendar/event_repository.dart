@@ -16,7 +16,7 @@ class EventRepository {
   static const _plansTable = 'plans';
   static const _settingsTable = 'settings';
   static const _dbName = 'calendar_events.db';
-  static const _version = 5;
+  static const _version = 6;
 
   static const _keyCalendarMinDate = 'calendarMinDate';
   static const _keyCalendarMaxDate = 'calendarMaxDate';
@@ -33,7 +33,8 @@ class EventRepository {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             minDateMillis INTEGER NOT NULL,
-            maxDateMillis INTEGER NOT NULL
+            maxDateMillis INTEGER NOT NULL,
+            deviceIdsJson TEXT
           )
         ''');
         final now = DateTime.now();
@@ -85,13 +86,21 @@ class EventRepository {
             'ALTER TABLE $_table ADD COLUMN cretaBookIdsJson TEXT',
           );
         }
+        if (oldVersion < 6) {
+          try {
+            await db.execute(
+              'ALTER TABLE $_plansTable ADD COLUMN deviceIdsJson TEXT',
+            );
+          } catch (_) {}
+        }
         if (oldVersion < 5) {
           await db.execute('''
             CREATE TABLE $_plansTable (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               name TEXT NOT NULL,
               minDateMillis INTEGER NOT NULL,
-              maxDateMillis INTEGER NOT NULL
+              maxDateMillis INTEGER NOT NULL,
+              deviceIdsJson TEXT
             )
           ''');
           final now = DateTime.now();

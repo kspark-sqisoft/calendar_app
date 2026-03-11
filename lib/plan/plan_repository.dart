@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:calendar_app/calendar/event_repository.dart';
 import 'package:calendar_app/plan/broadcast_plan.dart';
 import 'package:sqflite/sqflite.dart';
@@ -11,12 +13,27 @@ class PlanRepository {
 
   Future<Database> _getDb() async => EventRepository.instance.db;
 
+  List<int> _parseDeviceIdsJson(Object? value) {
+    if (value == null || value is! String || value.isEmpty) return [];
+    try {
+      final list = jsonDecode(value) as List<dynamic>?;
+      return list
+              ?.map((e) => (e is int) ? e : int.tryParse(e.toString()) ?? 0)
+              .where((e) => e > 0)
+              .toList() ??
+          [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   BroadcastPlan _rowToPlan(Map<String, Object?> row) {
     return BroadcastPlan(
       id: row['id'] as int?,
       name: row['name'] as String,
       minDate: DateTime.fromMillisecondsSinceEpoch(row['minDateMillis'] as int),
       maxDate: DateTime.fromMillisecondsSinceEpoch(row['maxDateMillis'] as int),
+      deviceIds: _parseDeviceIdsJson(row['deviceIdsJson']),
     );
   }
 
@@ -43,6 +60,7 @@ class PlanRepository {
       'name': plan.name,
       'minDateMillis': plan.minDate.millisecondsSinceEpoch,
       'maxDateMillis': plan.maxDate.millisecondsSinceEpoch,
+      'deviceIdsJson': plan.deviceIds.isEmpty ? null : jsonEncode(plan.deviceIds),
     });
     return plan.copyWith(id: id);
   }
@@ -56,6 +74,7 @@ class PlanRepository {
         'name': plan.name,
         'minDateMillis': plan.minDate.millisecondsSinceEpoch,
         'maxDateMillis': plan.maxDate.millisecondsSinceEpoch,
+        'deviceIdsJson': plan.deviceIds.isEmpty ? null : jsonEncode(plan.deviceIds),
       },
       where: 'id = ?',
       whereArgs: [plan.id],
