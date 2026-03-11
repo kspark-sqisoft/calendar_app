@@ -5439,7 +5439,8 @@ class _SfCalendarState extends State<SfCalendar>
       maxPosition = 0;
     }
 
-    _allDayPanelHeight = maxPosition * kAllDayAppointmentHeight;
+    _allDayPanelHeight = maxPosition * kAllDayAppointmentHeight +
+        (maxPosition > 0 ? kAllDayPanelBottomPadding : 0);
   }
 
   double _getMonthAgendaHeight() {

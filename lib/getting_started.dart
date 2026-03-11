@@ -42,6 +42,10 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
   /// 드래그/리사이즈 반영 후 캘린더 재생성용 (중복 표시 방지)
   final int _calendarDataKey = 0;
 
+  /// 캘린더 표시 범위 (상단 UI로 변경 가능)
+  late DateTime _calendarMinDate;
+  late DateTime _calendarMaxDate;
+
   /// On Air 아이콘 갱신용: 1분마다 setState
   Timer? _onAirUpdateTimer;
 
@@ -60,6 +64,9 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _calendarMinDate = DateTime(now.year - 1, 1, 1);
+    _calendarMaxDate = DateTime(now.year + 2, 12, 31);
     _calendarController = CalendarController();
     _calendarController.view = CalendarView.timelineDay;
     _eventDataSource = EventDataSource(_events);
@@ -124,12 +131,19 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
     };
   }
 
-  /// 전체 데이터 가져와서 JSON 팝업으로 표시
+  /// 전체 데이터 가져와서 JSON 팝업으로 표시 (일정 + 캘린더 표시 기간 포함)
   Future<void> _showAllDataPopup() async {
     try {
       final list = await EventRepository.instance.getAll();
       final jsonList = list.map(_eventToJson).toList();
-      final jsonString = const JsonEncoder.withIndent('  ').convert(jsonList);
+      final fullData = <String, dynamic>{
+        'calendarDateRange': {
+          'minDate': _calendarMinDate.toIso8601String(),
+          'maxDate': _calendarMaxDate.toIso8601String(),
+        },
+        'events': jsonList,
+      };
+      final jsonString = const JsonEncoder.withIndent('  ').convert(fullData);
       if (!mounted) return;
       showDialog<void>(
         context: context,
@@ -205,12 +219,17 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
   Future<void> _loadEvents() async {
     try {
       final list = await EventRepository.instance.getAll();
+      final savedRange = await EventRepository.instance.getCalendarDateRange();
       logger.d('Loaded events: $list'.toGreen);
       if (mounted) {
         setState(() {
           _events.clear();
           _events.addAll(list);
           _normalizeDisplayOrderForOverlappingGroups();
+          if (savedRange != null) {
+            _calendarMinDate = savedRange.minDate;
+            _calendarMaxDate = savedRange.maxDate;
+          }
           _isLoading = false;
           _loadError = null;
         });
@@ -594,6 +613,93 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
   /// 툴팁용 시간 문자열 (HH:mm)
   String _formatTime(DateTime dt) {
     return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// min/max 날짜 표시용 (yyyy-MM-dd)
+  String _formatDateYMD(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  /// 상단 min/max 날짜 설정 바
+  Widget _buildMinMaxDateBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.date_range,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          const Text('표시 범위:', style: TextStyle(fontWeight: FontWeight.w500)),
+          const SizedBox(width: 16),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.calendar_today, size: 18),
+            label: Text(_formatDateYMD(_calendarMinDate)),
+            onPressed: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _calendarMinDate,
+                firstDate: DateTime(1990),
+                lastDate: _calendarMaxDate.subtract(const Duration(days: 1)),
+              );
+              if (picked != null && mounted) {
+                setState(() {
+                  _calendarMinDate = DateTime(
+                    picked.year,
+                    picked.month,
+                    picked.day,
+                  );
+                  if (!_calendarMaxDate.isAfter(_calendarMinDate)) {
+                    _calendarMaxDate = _calendarMinDate.add(
+                      const Duration(days: 365),
+                    );
+                  }
+                });
+                EventRepository.instance.setCalendarDateRange(
+                  _calendarMinDate,
+                  _calendarMaxDate,
+                );
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          const Text('~', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.calendar_today, size: 18),
+            label: Text(_formatDateYMD(_calendarMaxDate)),
+            onPressed: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _calendarMaxDate,
+                firstDate: _calendarMinDate.add(const Duration(days: 1)),
+                lastDate: DateTime(2100),
+              );
+              if (picked != null && mounted) {
+                setState(() {
+                  _calendarMaxDate = DateTime(
+                    picked.year,
+                    picked.month,
+                    picked.day,
+                  );
+                });
+                EventRepository.instance.setCalendarDateRange(
+                  _calendarMinDate,
+                  _calendarMaxDate,
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   /// 지금 그려지는 일정의 날짜 (반복이면 해당 회차 날짜). 셀 날짜(detailsDate)가 있으면 Event인 경우 그걸 사용.
@@ -1211,117 +1317,134 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
                   ),
                 ),
               )
-            : Listener(
-                onPointerDown: (e) {
-                  if (e.buttons == 2) {
-                    final RenderObject? ro = context.findRenderObject();
-                    final Offset globalPos = ro is RenderBox
-                        ? ro.localToGlobal(e.localPosition)
-                        : e.position;
-                    // 우클릭한 위치에 일정이 있으면 그 일정을 선택하고 위/아래 메뉴 표시
-                    final details = _calendarController
-                        .getCalendarDetailsAtOffset
-                        ?.call(e.localPosition);
-                    if (details != null &&
-                        details.targetElement == CalendarElement.appointment &&
-                        details.appointments != null &&
-                        details.appointments!.isNotEmpty) {
-                      final event = _findEventFromTapped(
-                        details.appointments!.first,
-                      );
-                      if (event != null && !event.isAllDay) {
-                        setState(() => _lastTappedEvent = event);
-                        _showEventContextMenu(event, globalPos);
-                        return;
-                      }
-                    }
-                    // 빈 곳 우클릭이거나 올데이 일정: 기존처럼 선택된 일정 메뉴 또는 날짜 메뉴
-                    if (_lastTappedEvent != null &&
-                        !_lastTappedEvent!.isAllDay) {
-                      _showEventContextMenu(_lastTappedEvent!, globalPos);
-                    } else {
-                      // 우클릭한 지점의 날짜·시간을 사용하고, 해당 셀을 선택
-                      final DateTime date;
-                      if (details != null && details.date != null) {
-                        date = details.date!;
-                        _contextMenuDate = date;
-                        _calendarController.selectedDate = date;
-                        if (mounted) setState(() {});
-                      } else {
-                        date =
-                            _contextMenuDate ??
-                            _calendarController.displayDate ??
-                            DateTime.now();
-                      }
-                      _showContextMenu(date, globalPos);
-                    }
-                  }
-                },
-                child: SfCalendar(
-                  key: ValueKey<String>('$_currentView-$_calendarDataKey'),
-                  controller: _calendarController,
-                  dataSource: _eventDataSource,
-                  view: _currentView,
-                  showTodayButton: true,
-                  showNavigationArrow: true,
-                  todayHighlightColor: Colors.blueAccent,
-                  currentTimeIndicatorLineWidth: 2,
-                  currentTimeIndicatorCircleRadius: 6,
-                  currentTimeIndicatorColor: Colors.red,
-                  currentTimeIndicatorTextColor: Colors.white,
-
-                  timeSlotViewSettings: TimeSlotViewSettings(
-                    timeIntervalWidth: 75,
-                    timeIntervalHeight: 60,
-                    timelineAppointmentHeight: 60,
-                  ),
-                  monthViewSettings: MonthViewSettings(showAgenda: true),
-
-                  allowDragAndDrop: false,
-                  allowAppointmentResize: true,
-                  onDragEnd: _onAppointmentDragEnd,
-                  onAppointmentResizeEnd: _onAppointmentResizeEnd,
-                  appointmentBuilder: _buildAppointmentWithStackOpacity,
-
-                  onTap: (details) {
-                    if (details.date != null &&
-                        details.targetElement == CalendarElement.calendarCell) {
-                      _contextMenuDate = details.date;
-                    }
-                    if (details.targetElement == CalendarElement.appointment &&
-                        details.appointments != null &&
-                        details.appointments!.isNotEmpty) {
-                      final tapped = details.appointments!.first;
-                      final event = _findEventFromTapped(tapped);
-                      if (event != null) {
-                        final now = DateTime.now();
-                        if (_isSameEvent(_lastTappedEvent, event) &&
-                            _lastTapTime != null &&
-                            now.difference(_lastTapTime!) <
-                                _doubleTapInterval) {
-                          _lastTapTime = null;
-                          _lastTappedEvent = null;
-                          _openEditEventDialog(event);
-                        } else {
-                          _lastTappedEvent = event;
-                          _lastTapTime = now;
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildMinMaxDateBar(),
+                  Expanded(
+                    child: Listener(
+                      onPointerDown: (e) {
+                        if (e.buttons == 2) {
+                          final RenderObject? ro = context.findRenderObject();
+                          final Offset globalPos = ro is RenderBox
+                              ? ro.localToGlobal(e.localPosition)
+                              : e.position;
+                          // 우클릭한 위치에 일정이 있으면 그 일정을 선택하고 위/아래 메뉴 표시
+                          final details = _calendarController
+                              .getCalendarDetailsAtOffset
+                              ?.call(e.localPosition);
+                          if (details != null &&
+                              details.targetElement ==
+                                  CalendarElement.appointment &&
+                              details.appointments != null &&
+                              details.appointments!.isNotEmpty) {
+                            final event = _findEventFromTapped(
+                              details.appointments!.first,
+                            );
+                            if (event != null && !event.isAllDay) {
+                              setState(() => _lastTappedEvent = event);
+                              _showEventContextMenu(event, globalPos);
+                              return;
+                            }
+                          }
+                          // 빈 곳 우클릭이거나 올데이 일정: 기존처럼 선택된 일정 메뉴 또는 날짜 메뉴
+                          if (_lastTappedEvent != null &&
+                              !_lastTappedEvent!.isAllDay) {
+                            _showEventContextMenu(_lastTappedEvent!, globalPos);
+                          } else {
+                            // 우클릭한 지점의 날짜·시간을 사용하고, 해당 셀을 선택
+                            final DateTime date;
+                            if (details != null && details.date != null) {
+                              date = details.date!;
+                              _contextMenuDate = date;
+                              _calendarController.selectedDate = date;
+                              if (mounted) setState(() {});
+                            } else {
+                              date =
+                                  _contextMenuDate ??
+                                  _calendarController.displayDate ??
+                                  DateTime.now();
+                            }
+                            _showContextMenu(date, globalPos);
+                          }
                         }
-                      }
-                    } else {
-                      _lastTappedEvent = null;
-                    }
-                  },
-                  onLongPress: (details) {
-                    if (details.date != null &&
-                        details.targetElement == CalendarElement.calendarCell) {
-                      final RenderObject? ro = context.findRenderObject();
-                      final Offset position = ro is RenderBox
-                          ? ro.localToGlobal(ro.size.center(Offset.zero))
-                          : const Offset(100, 100);
-                      _showContextMenu(details.date!, position);
-                    }
-                  },
-                ),
+                      },
+                      child: SfCalendar(
+                        key: ValueKey<String>(
+                          '$_currentView-$_calendarDataKey',
+                        ),
+                        controller: _calendarController,
+                        dataSource: _eventDataSource,
+                        view: _currentView,
+                        minDate: _calendarMinDate,
+                        maxDate: _calendarMaxDate,
+                        showTodayButton: true,
+                        showNavigationArrow: true,
+                        showDatePickerButton: true,
+                        todayHighlightColor: Colors.blueAccent,
+                        currentTimeIndicatorLineWidth: 2,
+                        currentTimeIndicatorCircleRadius: 6,
+                        currentTimeIndicatorColor: Colors.red,
+                        currentTimeIndicatorTextColor: Colors.white,
+
+                        timeSlotViewSettings: TimeSlotViewSettings(
+                          timeIntervalWidth: 75,
+                          timeIntervalHeight: 60,
+                          timelineAppointmentHeight: 60,
+                        ),
+                        monthViewSettings: MonthViewSettings(showAgenda: true),
+
+                        allowDragAndDrop: false,
+                        allowAppointmentResize: true,
+                        onDragEnd: _onAppointmentDragEnd,
+                        onAppointmentResizeEnd: _onAppointmentResizeEnd,
+                        appointmentBuilder: _buildAppointmentWithStackOpacity,
+
+                        onTap: (details) {
+                          if (details.date != null &&
+                              details.targetElement ==
+                                  CalendarElement.calendarCell) {
+                            _contextMenuDate = details.date;
+                          }
+                          if (details.targetElement ==
+                                  CalendarElement.appointment &&
+                              details.appointments != null &&
+                              details.appointments!.isNotEmpty) {
+                            final tapped = details.appointments!.first;
+                            final event = _findEventFromTapped(tapped);
+                            if (event != null) {
+                              final now = DateTime.now();
+                              if (_isSameEvent(_lastTappedEvent, event) &&
+                                  _lastTapTime != null &&
+                                  now.difference(_lastTapTime!) <
+                                      _doubleTapInterval) {
+                                _lastTapTime = null;
+                                _lastTappedEvent = null;
+                                _openEditEventDialog(event);
+                              } else {
+                                _lastTappedEvent = event;
+                                _lastTapTime = now;
+                              }
+                            }
+                          } else {
+                            _lastTappedEvent = null;
+                          }
+                        },
+                        onLongPress: (details) {
+                          if (details.date != null &&
+                              details.targetElement ==
+                                  CalendarElement.calendarCell) {
+                            final RenderObject? ro = context.findRenderObject();
+                            final Offset position = ro is RenderBox
+                                ? ro.localToGlobal(ro.size.center(Offset.zero))
+                                : const Offset(100, 100);
+                            _showContextMenu(details.date!, position);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
               ),
       ),
     );

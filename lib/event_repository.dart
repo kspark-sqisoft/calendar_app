@@ -11,8 +11,12 @@ class EventRepository {
   static final EventRepository instance = EventRepository._();
 
   static const _table = 'events';
+  static const _settingsTable = 'settings';
   static const _dbName = 'calendar_events.db';
-  static const _version = 2;
+  static const _version = 3;
+
+  static const _keyCalendarMinDate = 'calendarMinDate';
+  static const _keyCalendarMaxDate = 'calendarMaxDate';
 
   Database? _db;
 
@@ -34,6 +38,12 @@ class EventRepository {
             displayOrder INTEGER
           )
         ''');
+        await db.execute('''
+          CREATE TABLE $_settingsTable (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -41,9 +51,61 @@ class EventRepository {
             'ALTER TABLE $_table ADD COLUMN displayOrder INTEGER',
           );
         }
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE $_settingsTable (
+              key TEXT PRIMARY KEY,
+              value TEXT NOT NULL
+            )
+          ''');
+        }
       },
     );
     return _db!;
+  }
+
+  /// 저장된 캘린더 표시 기간 (minDate, maxDate). 없으면 null.
+  Future<({DateTime minDate, DateTime maxDate})?> getCalendarDateRange() async {
+    final db = await _getDb();
+    try {
+      final rows = await db.query(
+        _settingsTable,
+        where: 'key IN (?, ?)',
+        whereArgs: [_keyCalendarMinDate, _keyCalendarMaxDate],
+      );
+      String? minVal;
+      String? maxVal;
+      for (final r in rows) {
+        final k = r['key'] as String?;
+        if (k == _keyCalendarMinDate) minVal = r['value'] as String?;
+        if (k == _keyCalendarMaxDate) maxVal = r['value'] as String?;
+      }
+      if (minVal == null || maxVal == null) return null;
+      final minMillis = int.tryParse(minVal);
+      final maxMillis = int.tryParse(maxVal);
+      if (minMillis == null || maxMillis == null) return null;
+      return (
+        minDate: DateTime.fromMillisecondsSinceEpoch(minMillis),
+        maxDate: DateTime.fromMillisecondsSinceEpoch(maxMillis),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 캘린더 표시 기간 저장
+  Future<void> setCalendarDateRange(DateTime minDate, DateTime maxDate) async {
+    final db = await _getDb();
+    await db.insert(
+      _settingsTable,
+      {'key': _keyCalendarMinDate, 'value': '${minDate.millisecondsSinceEpoch}'},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      _settingsTable,
+      {'key': _keyCalendarMaxDate, 'value': '${maxDate.millisecondsSinceEpoch}'},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   /// Map -> Event (exceptionDatesJson: "[millis,millis,...]")

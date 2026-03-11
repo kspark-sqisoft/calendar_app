@@ -10,8 +10,11 @@ import '../../../calendar.dart';
 import '../appointment_engine/appointment_helper.dart';
 import 'date_time_engine.dart';
 
-/// All day appointment height
-const double kAllDayAppointmentHeight = 20;
+/// All day appointment height (늘려서 하루 종일 일정이 보기 좋게)
+const double kAllDayAppointmentHeight = 44;
+
+/// 올데이 패널 아래 여백 (기본 방송 아이템들 아래 패딩)
+const double kAllDayPanelBottomPadding = 4;
 
 /// Timezone loaded value.
 bool timeZoneLoaded = false;

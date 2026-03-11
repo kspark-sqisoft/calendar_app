@@ -5083,7 +5083,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
       double allDayHeight = 0;
 
       if (isDayView) {
-        allDayHeight = _kAllDayLayoutHeight;
+        allDayHeight = _updateCalendarStateDetails.allDayPanelHeight;
         viewHeaderHeight = 0;
       } else {
         allDayHeight =
@@ -5333,7 +5333,7 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
           double allDayHeight = 0;
 
           if (isDayView) {
-            allDayHeight = _kAllDayLayoutHeight;
+            allDayHeight = _updateCalendarStateDetails.allDayPanelHeight;
             viewHeaderHeight = 0;
           } else {
             allDayHeight =
@@ -6924,17 +6924,21 @@ class _CalendarViewState extends State<_CalendarView>
         widget.view,
       );
       if (isCurrentView) {
-        _allDayHeight =
-            _kAllDayLayoutHeight > viewHeaderHeight &&
-                    _updateCalendarStateDetails.allDayPanelHeight >
-                        viewHeaderHeight
-                ? _updateCalendarStateDetails.allDayPanelHeight >
-                        _kAllDayLayoutHeight
-                    ? _kAllDayLayoutHeight
-                    : _updateCalendarStateDetails.allDayPanelHeight
-                : viewHeaderHeight;
-        if (_allDayHeight < _updateCalendarStateDetails.allDayPanelHeight) {
-          _allDayHeight += kAllDayAppointmentHeight;
+        if (_updateCalendarStateDetails.allDayPanelHeight > 0) {
+          _allDayHeight = _updateCalendarStateDetails.allDayPanelHeight;
+        } else {
+          _allDayHeight =
+              _kAllDayLayoutHeight > viewHeaderHeight &&
+                      _updateCalendarStateDetails.allDayPanelHeight >
+                          viewHeaderHeight
+                  ? _updateCalendarStateDetails.allDayPanelHeight >
+                          _kAllDayLayoutHeight
+                      ? _kAllDayLayoutHeight
+                      : _updateCalendarStateDetails.allDayPanelHeight
+                  : viewHeaderHeight;
+          if (_allDayHeight < _updateCalendarStateDetails.allDayPanelHeight) {
+            _allDayHeight = _updateCalendarStateDetails.allDayPanelHeight;
+          }
         }
       } else {
         _allDayHeight = viewHeaderHeight;

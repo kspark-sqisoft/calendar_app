@@ -59,15 +59,23 @@ class _EventEditDialogState extends State<_EventEditDialog> {
   late final TextEditingController _toHour;
   late final TextEditingController _toMinute;
 
+  /// 유사한 색 계열 순: 파랑 계열 → 초록 계열 → 노랑/주황 계열 → 빨강/핑크 → 보라 → 무채색
   static const List<Color> _colorOptions = [
     Colors.blue,
-    Colors.green,
-    Colors.amber,
-    Colors.red,
-    Colors.purple,
-    Colors.orange,
-    Colors.teal,
     Colors.indigo,
+    Colors.cyan,
+    Colors.teal,
+    Colors.blueGrey,
+    Colors.green,
+    Colors.lime,
+    Colors.amber,
+    Colors.orange,
+    Colors.deepOrange,
+    Colors.red,
+    Colors.pink,
+    Colors.purple,
+    Colors.grey,
+    Colors.brown,
   ];
 
   static const Map<String?, String> _recurrenceLabels = {
