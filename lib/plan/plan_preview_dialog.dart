@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:calendar_app/calendar/event_data_source.dart';
 import 'package:calendar_app/calendar/event_repository.dart';
+import 'package:calendar_app/creta/creta_book.dart';
 import 'package:calendar_app/plan/broadcast_plan.dart';
 import 'package:calendar_app/plan/plan_preview_utils.dart';
 import 'package:flutter/material.dart';
@@ -52,7 +53,7 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
     _controller = CalendarController();
     _controller.view = CalendarView.timelineWeek;
     _controller.displayDate = now;
-    _controller.selectedDate = now;
+    _controller.selectedDate = null; // 선택 없음(미리보기 전용)
     _dataSource = EventDataSource(_filteredEvents);
     _onAirBlinkController = AnimationController(
       vsync: this,
@@ -218,21 +219,37 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
     return null;
   }
 
-  /// 현재 방송 중인 일정 이름 (시간 기반 또는 오늘 하루종일 중 하나)
-  String? get _currentOnAirEventName {
+  /// 현재 방송 중인 일정 (시간 기반 또는 오늘 하루종일 중 하나)
+  Event? get _currentOnAirEvent {
     final now = DateTime.now();
     for (final e in _filteredEvents) {
       if (e.isAllDay) {
         final occ = _occurrenceOnToday(e);
-        if (occ != null && !_hasTimeBasedOnAirNow()) return e.eventName;
+        if (occ != null && !_hasTimeBasedOnAirNow()) return e;
       } else {
         final occ = _occurrenceOnToday(e);
         if (occ != null && !now.isBefore(occ.$1) && now.isBefore(occ.$2)) {
-          return e.eventName;
+          return e;
         }
       }
     }
     return null;
+  }
+
+  String? get _currentOnAirEventName => _currentOnAirEvent?.eventName;
+
+  /// 현재 방송 중인 이벤트의 시작·종료 시간 문자열 (예: "09:00 - 10:30" 또는 "하루 종일")
+  String? get _currentOnAirEventTimeText {
+    final e = _currentOnAirEvent;
+    if (e == null) return null;
+    final occ = _occurrenceOnToday(e);
+    if (occ == null) return null;
+    if (e.isAllDay) return '하루 종일';
+    return '${_formatTime(occ.$1)} - ${_formatTime(occ.$2)}';
+  }
+
+  static String _formatTime(DateTime dt) {
+    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _buildAppointment(
@@ -400,7 +417,7 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
   void _goToToday() {
     final today = DateTime.now();
     _controller.displayDate = today;
-    _controller.selectedDate = today;
+    _controller.selectedDate = null; // 선택 없음 유지
     setState(() {});
   }
 
@@ -411,7 +428,7 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
 
     return Dialog(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 600),
+        constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 700),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -545,6 +562,17 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              if (_currentOnAirEventTimeText != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  _currentOnAirEventTimeText!,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -552,6 +580,60 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
                     ),
                   ),
                 ),
+                if (_currentOnAirEvent?.cretaBooks != null &&
+                    _currentOnAirEvent!.cretaBooks!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border(
+                        left: BorderSide(color: colorScheme.primary, width: 4),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '방송 중인 크레타북',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: _currentOnAirEvent!.cretaBooks!
+                              .map<Widget>(
+                                (CretaBook b) => Chip(
+                                  label: Text(
+                                    b.name,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
               const SizedBox(height: 12),
               Flexible(
