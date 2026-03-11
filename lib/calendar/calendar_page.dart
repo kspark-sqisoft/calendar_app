@@ -235,7 +235,9 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     try {
       final planId = widget.planId;
       final list = await EventRepository.instance.getAllByPlanId(planId);
-      final savedRange = await EventRepository.instance.getPlanDateRange(planId);
+      final savedRange = await EventRepository.instance.getPlanDateRange(
+        planId,
+      );
       final plan = await PlanRepository.instance.getById(planId);
       logger.d('Loaded events: $list'.toGreen);
       if (mounted) {
@@ -1428,6 +1430,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                         showNavigationArrow: true,
                         showDatePickerButton: true,
                         todayHighlightColor: Colors.blueAccent,
+                        /*
                         viewHeaderStyle: ViewHeaderStyle(
                           dateTextStyle: TextStyle(
                             fontSize: 20,
@@ -1438,6 +1441,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        */
                         currentTimeIndicatorLineWidth: 2,
                         currentTimeIndicatorCircleRadius: 6,
                         currentTimeIndicatorColor: Colors.red,
@@ -1447,8 +1451,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                           timeIntervalWidth: 75,
                           timeIntervalHeight: 60,
                           timelineAppointmentHeight: 60,
-                          dateFormat: 'M월 d일',
-                          dayFormat: 'EE',
+                          //dateFormat: 'M월 d일',
+                          //dayFormat: 'EE',
                         ),
                         monthViewSettings: MonthViewSettings(showAgenda: true),
 
