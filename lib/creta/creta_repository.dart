@@ -1,4 +1,5 @@
 import 'package:calendar_app/creta/creta_book.dart';
+import 'package:calendar_app/main.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -14,19 +15,23 @@ class CretaRepository {
   Database? _db;
 
   Future<Database> _getDb() async {
-    _db ??= await openDatabase(
-      join(await getDatabasesPath(), _dbName),
-      version: _version,
-      onCreate: (db, version) async {
-        await db.execute('''
+    if (_db == null) {
+      final dbPath = join(await getDatabasesPath(), _dbName);
+      logger.d('로컬 DB: $_dbName → $dbPath');
+      _db = await openDatabase(
+        dbPath,
+        version: _version,
+        onCreate: (db, version) async {
+          await db.execute('''
           CREATE TABLE $_table (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             createdAtMillis INTEGER NOT NULL
           )
         ''');
-      },
-    );
+        },
+      );
+    }
     return _db!;
   }
 

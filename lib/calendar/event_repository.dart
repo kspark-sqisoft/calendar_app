@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:calendar_app/calendar/event_data_source.dart';
 import 'package:calendar_app/creta/creta_book.dart';
 import 'package:calendar_app/creta/creta_repository.dart';
+import 'package:calendar_app/main.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -28,10 +29,13 @@ class EventRepository {
   Database? _db;
 
   Future<Database> _getDb() async {
-    _db ??= await openDatabase(
-      join(await getDatabasesPath(), _dbName),
-      version: _version,
-      onCreate: (db, version) async {
+    if (_db == null) {
+      final dbPath = join(await getDatabasesPath(), _dbName);
+      logger.d('로컬 DB: $_dbName → $dbPath');
+      _db = await openDatabase(
+        dbPath,
+        version: _version,
+        onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE $_plansTable (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -124,7 +128,8 @@ class EventRepository {
           );
         }
       },
-    );
+      );
+    }
     return _db!;
   }
 
