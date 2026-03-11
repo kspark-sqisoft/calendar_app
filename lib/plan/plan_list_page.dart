@@ -1,6 +1,7 @@
 import 'package:calendar_app/plan/broadcast_plan.dart';
 import 'package:calendar_app/plan/broadcast_devices_dialog.dart';
 import 'package:calendar_app/plan/plan_edit_dialog.dart';
+import 'package:calendar_app/plan/plan_preview_dialog.dart';
 import 'package:calendar_app/plan/plan_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -345,6 +346,19 @@ class _PlanListPageState extends ConsumerState<PlanListPage> {
                                           ],
                                         ),
                                       ),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.preview_rounded,
+                                          color: colorScheme.primary,
+                                          size: 22,
+                                        ),
+                                        onPressed: () => showPlanPreviewDialog(context, plan: plan),
+                                        tooltip: '미리보기',
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
                                       FilledButton.icon(
                                         onPressed: () => _broadcastPlan(plan),
                                         icon: const Icon(Icons.cast_rounded, size: 20),
