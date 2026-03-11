@@ -58,8 +58,8 @@ class CustomCalendarScrollView extends StatefulWidget {
     this.timelineMonthWeekNumberNotifier,
     this.updateCalendarState,
     this.getCalendarState, {
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   /// Holds the calendar instance used to get the calendar properties.
   final SfCalendar calendar;
@@ -2409,7 +2409,6 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
             previousResource,
             previousResource,
             appointment.exactStartTime,
-            dropPosition: null,
           ),
         );
       }
@@ -2526,7 +2525,6 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
               previousResource,
               previousResource,
               appointment.exactStartTime,
-              dropPosition: null,
             ),
           );
         }
@@ -2615,8 +2613,12 @@ class _CustomCalendarScrollViewState extends State<CustomCalendarScrollView>
     final Offset? dropPosition;
     if (_dragDetails.value.appointmentView?.appointmentRect != null) {
       final rect = _dragDetails.value.appointmentView!.appointmentRect!;
-      final appointmentPosition = _dragDetails.value.position.value! - _dragDifferenceOffset!;
-      final centerY = appointmentPosition.dy + rect.height / 2 + widget.calendar.headerHeight;
+      final appointmentPosition =
+          _dragDetails.value.position.value! - _dragDifferenceOffset!;
+      final centerY =
+          appointmentPosition.dy +
+          rect.height / 2 +
+          widget.calendar.headerHeight;
       double centerX = appointmentPosition.dx + rect.width / 2;
       if (CalendarViewHelper.isTimelineView(widget.view) &&
           currentState._scrollController != null) {
@@ -6357,8 +6359,8 @@ class _CalendarView extends StatefulWidget {
     this.dragDetails,
     this.updateCalendarState,
     this.getCalendarState, {
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   final List<DateTime> visibleDates;
   final List<CalendarTimeRegion>? regions;
@@ -7010,16 +7012,22 @@ class _CalendarViewState extends State<_CalendarView>
       final double scrollPosition = _getScrollPositionForCurrentDate(
         _updateCalendarStateDetails.currentDate!,
       );
-      if (scrollPosition == -1 ||
-          (_scrollController != null &&
-              _scrollController!.position.pixels == scrollPosition)) {
+      if (scrollPosition == -1) {
         return;
       }
-      if (_scrollController != null) {
+      if (_scrollController != null && _scrollController!.hasClients) {
+        double targetPosition = scrollPosition;
+        final double viewport = _scrollController!.position.viewportDimension;
+        final double maxExtent = _scrollController!.position.maxScrollExtent;
+        targetPosition = (scrollPosition - viewport / 2).clamp(
+          0.0,
+          maxExtent,
+        ); //오늘로 이동시 현재 시간이 중앙에 보이게 하려고
+        if (_scrollController!.position.pixels == targetPosition) {
+          return;
+        }
         _scrollController!.jumpTo(
-          _scrollController!.position.maxScrollExtent > scrollPosition
-              ? scrollPosition
-              : _scrollController!.position.maxScrollExtent,
+          maxExtent > targetPosition ? targetPosition : maxExtent,
         );
       }
     });
@@ -10005,10 +10013,8 @@ class _CalendarViewState extends State<_CalendarView>
           widget.calendar.timeSlotViewSettings,
           isTimelineView,
           widget.visibleDates,
-          widget.calendar.currentTimeIndicatorColor ??
-              Colors.red,
-          widget.calendar.currentTimeIndicatorTextColor ??
-              Colors.white,
+          widget.calendar.currentTimeIndicatorColor ?? Colors.red,
+          widget.calendar.currentTimeIndicatorTextColor ?? Colors.white,
           _isRTL,
           _currentTimeNotifier,
           widget.calendar.timeZone ?? '',
@@ -14653,11 +14659,11 @@ class _CalendarMultiChildContainer extends Stack {
   const _CalendarMultiChildContainer({
     // ignore: unused_element_parameter
     this.painter,
-    List<Widget> children = const <Widget>[],
+    super.children,
     required this.width,
     required this.height,
     required this.builder,
-  }) : super(children: children);
+  });
   final CustomPainter? painter;
   final double width;
   final double height;
@@ -14919,8 +14925,7 @@ class _MultiChildContainerRenderObject extends RenderStack {
 
 class _CustomNeverScrollableScrollPhysics extends NeverScrollableScrollPhysics {
   /// Creates scroll physics that does not let the user scroll.
-  const _CustomNeverScrollableScrollPhysics({ScrollPhysics? parent})
-    : super(parent: parent);
+  const _CustomNeverScrollableScrollPhysics({super.parent});
 
   @override
   _CustomNeverScrollableScrollPhysics applyTo(ScrollPhysics? ancestor) {
@@ -15090,10 +15095,7 @@ class _CurrentTimeIndicator extends CustomPainter {
       );
       canvas.drawRRect(boxRect, fillPainter);
       canvas.drawRRect(boxRect, strokePainter);
-      textPainter.paint(
-        canvas,
-        Offset(boxLeft + paddingH, boxTop + paddingV),
-      );
+      textPainter.paint(canvas, Offset(boxLeft + paddingH, boxTop + paddingV));
       canvas.drawLine(
         Offset(viewStartPosition, startYPosition),
         Offset(viewEndPosition, startYPosition),
@@ -15970,8 +15972,8 @@ class _DraggingAppointmentRenderObjectWidget
     this.calendarTheme,
     this.width,
     this.height, {
-    Widget? child,
-  }) : super(child: child);
+    super.child,
+  });
   final _DragPaintDetails dragDetails;
 
   final bool isRTL;
