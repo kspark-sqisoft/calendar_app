@@ -58,6 +58,14 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
   /// 뷰 변경 시 오늘 날짜로 이동 (true) vs 라이브러리 기본 동작 유지 (false)
   bool _viewChangeMovesToToday = true;
 
+  /// 타임라인 시간축 간격 너비 (기본 75)
+  double _timeIntervalWidth = 75;
+
+  /// 타임라인 시간축 간격 높이 (기본 60)
+  double _timeIntervalHeight = 60;
+  /// 타임라인 일정 높이 (기본 60)
+  double _timelineAppointmentHeight = 60;
+
   static const _viewLabels = {
     CalendarView.day: '일',
     CalendarView.week: '주',
@@ -91,6 +99,9 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       CurvedAnimation(parent: _onAirBlinkController, curve: Curves.easeInOut),
     );
     _loadViewChangeMovesToToday();
+    _loadTimeIntervalWidth();
+    _loadTimeIntervalHeight();
+    _loadTimelineAppointmentHeight();
   }
 
   Future<void> _loadViewChangeMovesToToday() async {
@@ -98,25 +109,138 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     if (mounted) setState(() => _viewChangeMovesToToday = value);
   }
 
+  Future<void> _loadTimeIntervalWidth() async {
+    final value = await EventRepository.instance.getTimeIntervalWidth();
+    if (mounted) setState(() => _timeIntervalWidth = value.toDouble());
+  }
+
+  Future<void> _loadTimeIntervalHeight() async {
+    final value = await EventRepository.instance.getTimeIntervalHeight();
+    if (mounted) setState(() => _timeIntervalHeight = value.toDouble());
+  }
+
+  Future<void> _loadTimelineAppointmentHeight() async {
+    final value = await EventRepository.instance.getTimelineAppointmentHeight();
+    if (mounted) setState(() => _timelineAppointmentHeight = value.toDouble());
+  }
+
   Future<void> _showCalendarOptions() async {
     var movesToToday = _viewChangeMovesToToday;
-    final result = await showDialog<bool>(
+    var timeIntervalWidth = _timeIntervalWidth;
+    var timeIntervalHeight = _timeIntervalHeight;
+    var timelineAppointmentHeight = _timelineAppointmentHeight;
+    final result = await showDialog<(bool, int, int, int)>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('캘린더 옵션'),
-          content: SwitchListTile(
-            title: const Text('뷰 변경 시 오늘 날짜로 이동'),
-            subtitle: Text(
-              movesToToday
-                  ? '뷰를 바꾸면 오늘 날짜로 이동합니다.'
-                  : '뷰만 바꾸고 현재 보이는 날짜를 유지합니다.',
-              style: Theme.of(context).textTheme.bodySmall,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SwitchListTile(
+                  title: const Text('뷰 변경 시 오늘 날짜로 이동'),
+                  subtitle: Text(
+                    movesToToday
+                        ? '뷰를 바꾸면 오늘 날짜로 이동합니다.'
+                        : '뷰만 바꾸고 현재 보이는 날짜를 유지합니다.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  value: movesToToday,
+                  onChanged: (v) {
+                    setDialogState(() => movesToToday = v);
+                  },
+                ),
+                const Divider(height: 24),
+                Text(
+                  '시간축 간격 너비 (timeIntervalWidth)기본 70',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: timeIntervalWidth,
+                        min: 40,
+                        max: 200,
+                        divisions: 16,
+                        label: timeIntervalWidth.round().toString(),
+                        onChanged: (v) {
+                          setDialogState(() => timeIntervalWidth = v);
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        '${timeIntervalWidth.round()}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '시간축 간격 높이 (timeIntervalHeight) 기본 60',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: timeIntervalHeight,
+                        min: 30,
+                        max: 120,
+                        divisions: 9,
+                        label: timeIntervalHeight.round().toString(),
+                        onChanged: (v) {
+                          setDialogState(() => timeIntervalHeight = v);
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        '${timeIntervalHeight.round()}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '타임라인 일정 높이 (timelineAppointmentHeight) 기본 60',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: timelineAppointmentHeight,
+                        min: 30,
+                        max: 120,
+                        divisions: 9,
+                        label: timelineAppointmentHeight.round().toString(),
+                        onChanged: (v) {
+                          setDialogState(() => timelineAppointmentHeight = v);
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        '${timelineAppointmentHeight.round()}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            value: movesToToday,
-            onChanged: (v) {
-              setDialogState(() => movesToToday = v);
-            },
           ),
           actions: [
             TextButton(
@@ -124,7 +248,12 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
               child: const Text('취소'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(movesToToday),
+              onPressed: () => Navigator.of(context).pop((
+                movesToToday,
+                timeIntervalWidth.round(),
+                timeIntervalHeight.round(),
+                timelineAppointmentHeight.round(),
+              )),
               child: const Text('적용'),
             ),
           ],
@@ -132,8 +261,16 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       ),
     );
     if (result != null && mounted) {
-      await EventRepository.instance.setViewChangeMovesToToday(result);
-      setState(() => _viewChangeMovesToToday = result);
+      await EventRepository.instance.setViewChangeMovesToToday(result.$1);
+      await EventRepository.instance.setTimeIntervalWidth(result.$2);
+      await EventRepository.instance.setTimeIntervalHeight(result.$3);
+      await EventRepository.instance.setTimelineAppointmentHeight(result.$4);
+      setState(() {
+        _viewChangeMovesToToday = result.$1;
+        _timeIntervalWidth = result.$2.toDouble();
+        _timeIntervalHeight = result.$3.toDouble();
+        _timelineAppointmentHeight = result.$4.toDouble();
+      });
     }
   }
 
@@ -1600,9 +1737,9 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                         currentTimeIndicatorTextColor: Colors.white,
 
                         timeSlotViewSettings: TimeSlotViewSettings(
-                          timeIntervalWidth: 75,
-                          timeIntervalHeight: 60,
-                          timelineAppointmentHeight: 60,
+                          timeIntervalWidth: _timeIntervalWidth,
+                          timeIntervalHeight: _timeIntervalHeight,
+                          timelineAppointmentHeight: _timelineAppointmentHeight,
                           //dateFormat: 'M월 d일',
                           //dayFormat: 'EE',
                         ),

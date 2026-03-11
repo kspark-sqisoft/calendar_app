@@ -21,6 +21,9 @@ class EventRepository {
   static const _keyCalendarMinDate = 'calendarMinDate';
   static const _keyCalendarMaxDate = 'calendarMaxDate';
   static const _keyViewChangeMovesToToday = 'viewChangeMovesToToday';
+  static const _keyTimeIntervalWidth = 'timeIntervalWidth';
+  static const _keyTimeIntervalHeight = 'timeIntervalHeight';
+  static const _keyTimelineAppointmentHeight = 'timelineAppointmentHeight';
 
   Database? _db;
 
@@ -213,6 +216,84 @@ class EventRepository {
     await db.insert(_settingsTable, {
       'key': _keyViewChangeMovesToToday,
       'value': value ? 'true' : 'false',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// 타임라인 시간축 간격 너비 (기본 75)
+  Future<int> getTimeIntervalWidth() async {
+    final db = await _getDb();
+    try {
+      final rows = await db.query(
+        _settingsTable,
+        where: 'key = ?',
+        whereArgs: [_keyTimeIntervalWidth],
+      );
+      if (rows.isEmpty) return 75;
+      final v = int.tryParse(rows.single['value'] as String? ?? '');
+      return v != null && v >= 40 && v <= 200 ? v : 75;
+    } catch (_) {
+      return 75;
+    }
+  }
+
+  Future<void> setTimeIntervalWidth(int value) async {
+    final v = value.clamp(40, 200);
+    final db = await _getDb();
+    await db.insert(_settingsTable, {
+      'key': _keyTimeIntervalWidth,
+      'value': '$v',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// 타임라인 시간축 간격 높이 (기본 60)
+  Future<int> getTimeIntervalHeight() async {
+    final db = await _getDb();
+    try {
+      final rows = await db.query(
+        _settingsTable,
+        where: 'key = ?',
+        whereArgs: [_keyTimeIntervalHeight],
+      );
+      if (rows.isEmpty) return 60;
+      final v = int.tryParse(rows.single['value'] as String? ?? '');
+      return v != null && v >= 30 && v <= 120 ? v : 60;
+    } catch (_) {
+      return 60;
+    }
+  }
+
+  Future<void> setTimeIntervalHeight(int value) async {
+    final v = value.clamp(30, 120);
+    final db = await _getDb();
+    await db.insert(_settingsTable, {
+      'key': _keyTimeIntervalHeight,
+      'value': '$v',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// 타임라인 일정 높이 (기본 60)
+  Future<int> getTimelineAppointmentHeight() async {
+    final db = await _getDb();
+    try {
+      final rows = await db.query(
+        _settingsTable,
+        where: 'key = ?',
+        whereArgs: [_keyTimelineAppointmentHeight],
+      );
+      if (rows.isEmpty) return 60;
+      final v = int.tryParse(rows.single['value'] as String? ?? '');
+      return v != null && v >= 30 && v <= 120 ? v : 60;
+    } catch (_) {
+      return 60;
+    }
+  }
+
+  Future<void> setTimelineAppointmentHeight(int value) async {
+    final v = value.clamp(30, 120);
+    final db = await _getDb();
+    await db.insert(_settingsTable, {
+      'key': _keyTimelineAppointmentHeight,
+      'value': '$v',
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
