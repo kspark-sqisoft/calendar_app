@@ -842,6 +842,23 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
               }
             },
           ),
+          const Spacer(),
+          Consumer(
+            builder: (context, ref, _) {
+              final locale = ref.watch(localeProvider);
+              final label = locale.languageCode == 'ko' ? '오늘로 이동' : 'Go Today';
+              return TextButton.icon(
+                onPressed: () {
+                  final today = DateTime.now();
+                  _calendarController.displayDate = today;
+                  _calendarController.selectedDate = today;
+                  setState(() {});
+                },
+                icon: const Icon(Icons.calendar_today, size: 18),
+                label: Text(label),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -1558,7 +1575,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                         view: _currentView,
                         minDate: _calendarMinDate,
                         maxDate: _calendarMaxDate,
-                        showTodayButton: true,
+                        //showTodayButton: true,
                         showNavigationArrow: true,
                         showDatePickerButton: true,
                         todayHighlightColor: Colors.blueAccent,
@@ -1640,14 +1657,14 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                   ),
                 ],
               ),
-      floatingActionButton: _isLoading || _loadError != null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _onFabNewEvent,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('새 이벤트'),
-              tooltip: '새 이벤트 만들기',
-            ),
+        floatingActionButton: _isLoading || _loadError != null
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: _onFabNewEvent,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('새 이벤트'),
+                tooltip: '새 이벤트 만들기',
+              ),
       ),
     );
   }
