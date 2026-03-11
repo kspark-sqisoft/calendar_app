@@ -289,6 +289,24 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
       final saved = await EventRepository.instance.insert(event);
       if (!mounted) return;
       _events.add(saved);
+      // 겹치는 일정이 있으면 새 일정을 그 아래에 두기 위해 displayOrder를 더 작게 설정
+      if (!saved.isAllDay) {
+        final overlapping = _events
+            .where(
+              (e) =>
+                  e != saved &&
+                  !e.isAllDay &&
+                  _timeRangesOverlap(saved.from, saved.to, e.from, e.to),
+            )
+            .toList();
+        if (overlapping.isNotEmpty) {
+          final minOrder = overlapping
+              .map((e) => e.displayOrder ?? 0)
+              .reduce((a, b) => a < b ? a : b);
+          saved.displayOrder = minOrder - 1;
+          await EventRepository.instance.update(saved);
+        }
+      }
       _normalizeDisplayOrderForOverlappingGroups();
       _eventDataSource.notifyListeners(
         CalendarDataSourceAction.reset,
