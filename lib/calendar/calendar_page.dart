@@ -55,6 +55,9 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
   /// On Air 아이콘 갱신용: 1분마다 setState
   Timer? _onAirUpdateTimer;
 
+  /// 뷰 변경 시 오늘 날짜로 이동 (true) vs 라이브러리 기본 동작 유지 (false)
+  bool _viewChangeMovesToToday = true;
+
   static const _viewLabels = {
     CalendarView.day: '일',
     CalendarView.week: '주',
@@ -87,6 +90,51 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     _onAirBlinkAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(parent: _onAirBlinkController, curve: Curves.easeInOut),
     );
+    _loadViewChangeMovesToToday();
+  }
+
+  Future<void> _loadViewChangeMovesToToday() async {
+    final value = await EventRepository.instance.getViewChangeMovesToToday();
+    if (mounted) setState(() => _viewChangeMovesToToday = value);
+  }
+
+  Future<void> _showCalendarOptions() async {
+    var movesToToday = _viewChangeMovesToToday;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('캘린더 옵션'),
+          content: SwitchListTile(
+            title: const Text('뷰 변경 시 오늘 날짜로 이동'),
+            subtitle: Text(
+              movesToToday
+                  ? '뷰를 바꾸면 오늘 날짜로 이동합니다.'
+                  : '뷰만 바꾸고 현재 보이는 날짜를 유지합니다.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            value: movesToToday,
+            onChanged: (v) {
+              setDialogState(() => movesToToday = v);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(movesToToday),
+              child: const Text('적용'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      await EventRepository.instance.setViewChangeMovesToToday(result);
+      setState(() => _viewChangeMovesToToday = result);
+    }
   }
 
   @override
@@ -1326,6 +1374,11 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
               },
             ),
             IconButton(
+              tooltip: '캘린더 옵션',
+              icon: const Icon(Icons.settings_outlined, size: 24),
+              onPressed: _showCalendarOptions,
+            ),
+            IconButton(
               tooltip: '전체 데이터 JSON 보기',
               icon: const Icon(Icons.data_object, size: 24),
               onPressed: _showAllDataPopup,
@@ -1349,9 +1402,11 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
               onSelected: (view) {
                 setState(() => _currentView = view);
                 _calendarController.view = view;
-                final today = DateTime.now();
-                _calendarController.displayDate = today;
-                _calendarController.selectedDate = today;
+                if (_viewChangeMovesToToday) {
+                  final today = DateTime.now();
+                  _calendarController.displayDate = today;
+                  _calendarController.selectedDate = today;
+                }
               },
               itemBuilder: (context) => CalendarView.values
                   .map(

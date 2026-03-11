@@ -20,6 +20,7 @@ class EventRepository {
 
   static const _keyCalendarMinDate = 'calendarMinDate';
   static const _keyCalendarMaxDate = 'calendarMaxDate';
+  static const _keyViewChangeMovesToToday = 'viewChangeMovesToToday';
 
   Database? _db;
 
@@ -188,6 +189,31 @@ class EventRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  /// 뷰 변경 시 오늘 날짜로 이동할지 (기본 true)
+  Future<bool> getViewChangeMovesToToday() async {
+    final db = await _getDb();
+    try {
+      final rows = await db.query(
+        _settingsTable,
+        where: 'key = ?',
+        whereArgs: [_keyViewChangeMovesToToday],
+      );
+      if (rows.isEmpty) return true;
+      final v = rows.single['value'] as String?;
+      return v != 'false';
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<void> setViewChangeMovesToToday(bool value) async {
+    final db = await _getDb();
+    await db.insert(_settingsTable, {
+      'key': _keyViewChangeMovesToToday,
+      'value': value ? 'true' : 'false',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// 캘린더 표시 기간 저장
