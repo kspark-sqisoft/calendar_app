@@ -43,7 +43,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
   static const _doubleTapInterval = Duration(milliseconds: 400);
 
   /// 현재 캘린더 뷰 (기본: timelineDay)
-  CalendarView _currentView = CalendarView.timelineDay;
+  CalendarView _currentView = CalendarView.timelineWeek;
 
   /// 드래그/리사이즈 반영 후 캘린더 재생성용 (중복 표시 방지)
   final int _calendarDataKey = 0;
@@ -77,7 +77,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     _calendarMinDate = DateTime(now.year - 1, 1, 1);
     _calendarMaxDate = DateTime(now.year + 2, 12, 31);
     _calendarController = CalendarController();
-    _calendarController.view = CalendarView.timelineDay;
+    _calendarController.view = CalendarView.timelineWeek;
     _eventDataSource = EventDataSource(_events);
     _loadEvents();
     _onAirUpdateTimer = Timer.periodic(const Duration(minutes: 1), (_) {
