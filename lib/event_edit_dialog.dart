@@ -45,6 +45,8 @@ class _EventEditDialogState extends State<_EventEditDialog> {
   late Color _background;
   late bool _isAllDay;
   String? _recurrenceRule;
+  /// 반복 일정에서 제외할 날짜들 (날짜만 사용, 시간은 0으로)
+  List<DateTime> _recurrenceExceptionDates = [];
 
   late final TextEditingController _fromYear;
   late final TextEditingController _fromMonth;
@@ -107,6 +109,11 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       _background = existing.background;
       _isAllDay = existing.isAllDay;
       _recurrenceRule = existing.recurrenceRule;
+      _recurrenceExceptionDates = existing.recurrenceExceptionDates != null
+          ? existing.recurrenceExceptionDates!
+              .map((d) => DateTime(d.year, d.month, d.day))
+              .toList()
+          : [];
     } else {
       final from = widget.initialFrom!;
       _nameController = TextEditingController(text: '새 일정');
@@ -115,6 +122,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       _background = Colors.blue;
       _isAllDay = false;
       _recurrenceRule = null;
+      _recurrenceExceptionDates = [];
     }
     _fromYear = TextEditingController(text: '${_from.year}');
     _fromMonth = TextEditingController(text: '${_from.month}');
@@ -306,6 +314,9 @@ class _EventEditDialogState extends State<_EventEditDialog> {
     }
     final String? normalizedRule =
         _normalizeRecurrenceRule(_recurrenceRule, from);
+    final exceptionDates = _recurrenceExceptionDates.isEmpty
+        ? null
+        : List<DateTime>.from(_recurrenceExceptionDates);
     final event = Event(
       eventName: name,
       from: from,
@@ -313,10 +324,37 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       background: _background,
       isAllDay: _isAllDay,
       recurrenceRule: normalizedRule,
-      recurrenceExceptionDates: widget.existingEvent?.recurrenceExceptionDates,
+      recurrenceExceptionDates: exceptionDates,
     );
+    if (widget.existingEvent != null) {
+      event.id = widget.existingEvent!.id;
+      event.displayOrder = widget.existingEvent!.displayOrder;
+    }
     Navigator.of(context).pop(event);
   }
+
+  /// 제외 날짜 추가: 날짜 선택 후 리스트에 추가 (중복·날짜만 정규화)
+  Future<void> _addExceptionDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _from,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null || !mounted) return;
+    final dateOnly = DateTime(picked.year, picked.month, picked.day);
+    final already = _recurrenceExceptionDates.any((d) =>
+        d.year == dateOnly.year && d.month == dateOnly.month && d.day == dateOnly.day);
+    if (already) return;
+    setState(() {
+      _recurrenceExceptionDates = List<DateTime>.from(_recurrenceExceptionDates)
+        ..add(dateOnly);
+      _recurrenceExceptionDates.sort((a, b) => a.compareTo(b));
+    });
+  }
+
+  String _formatDateOnly(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -487,6 +525,47 @@ class _EventEditDialogState extends State<_EventEditDialog> {
                 }).toList(),
                 onChanged: (v) => setState(() => _recurrenceRule = v),
               ),
+              if (_recurrenceRule != null && _recurrenceRule!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  '제외 날짜',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '반복에서 제외할 날짜를 추가하면 해당 날만 일정이 표시되지 않습니다.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ..._recurrenceExceptionDates.map((d) {
+                      return Chip(
+                        label: Text(_formatDateOnly(d)),
+                        deleteIcon: const Icon(Icons.close, size: 18),
+                        onDeleted: () {
+                          setState(() {
+                            _recurrenceExceptionDates =
+                                _recurrenceExceptionDates
+                                    .where((x) =>
+                                        x.year != d.year ||
+                                        x.month != d.month ||
+                                        x.day != d.day)
+                                    .toList();
+                          });
+                        },
+                      );
+                    }),
+                    OutlinedButton.icon(
+                      onPressed: _addExceptionDate,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('날짜 추가'),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

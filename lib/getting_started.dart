@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:calendar_app/event_data_source.dart';
 import 'package:calendar_app/event_edit_dialog.dart';
@@ -102,6 +103,101 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
         for (final e in overlapping) {
           e.displayOrder = order--;
         }
+      }
+    }
+  }
+
+  /// Event → JSON 맵 (팝업 표시용)
+  Map<String, dynamic> _eventToJson(Event e) {
+    return {
+      'id': e.id,
+      'eventName': e.eventName,
+      'from': e.from.toIso8601String(),
+      'to': e.to.toIso8601String(),
+      'colorValue': e.background.value,
+      'isAllDay': e.isAllDay,
+      'recurrenceRule': e.recurrenceRule,
+      'recurrenceExceptionDates': e.recurrenceExceptionDates
+          ?.map((d) => d.toIso8601String())
+          .toList(),
+      'displayOrder': e.displayOrder,
+    };
+  }
+
+  /// 전체 데이터 가져와서 JSON 팝업으로 표시
+  Future<void> _showAllDataPopup() async {
+    try {
+      final list = await EventRepository.instance.getAll();
+      final jsonList = list.map(_eventToJson).toList();
+      final jsonString = const JsonEncoder.withIndent('  ').convert(jsonList);
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('전체 일정 데이터 (JSON)'),
+          content: SizedBox(
+            width: 620,
+            height: 600,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '총 ${list.length}건',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Theme.of(context).dividerColor),
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: SelectableText(
+                        jsonString,
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('닫기'),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: jsonString));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('JSON이 클립보드에 복사되었습니다.')),
+                );
+              },
+              icon: const Icon(Icons.copy, size: 18),
+              label: const Text('복사'),
+            ),
+          ],
+        ),
+      );
+    } catch (e, st) {
+      debugPrint('getAll error: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('데이터 로드 실패: $e')));
       }
     }
   }
@@ -1030,6 +1126,11 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
               onPressed: () {
                 ref.read(themeModeProvider.notifier).toggle();
               },
+            ),
+            IconButton(
+              tooltip: '전체 데이터 JSON 보기',
+              icon: const Icon(Icons.data_object, size: 24),
+              onPressed: _showAllDataPopup,
             ),
             PopupMenuButton<CalendarView>(
               tooltip: '뷰 선택',
