@@ -63,6 +63,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
 
   /// 타임라인 시간축 간격 높이 (기본 60)
   double _timeIntervalHeight = 60;
+
   /// 타임라인 일정 높이 (기본 60)
   double _timelineAppointmentHeight = 60;
 
@@ -1087,7 +1088,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                 mainAxisSize: MainAxisSize.max,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.live_tv, size: 22, color: Colors.red.shade700),
+                  Icon(Icons.live_tv, size: 22, color: Colors.white),
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
