@@ -376,6 +376,28 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     );
   }
 
+  /// FAB으로 새 이벤트 생성: 현재 표시 중인 날짜(displayDate) 기준 1시간 구간으로 편집 다이얼로그 오픈
+  Future<void> _onFabNewEvent() async {
+    final displayDate = _calendarController.displayDate ?? DateTime.now();
+    final initialFrom = DateTime(
+      displayDate.year,
+      displayDate.month,
+      displayDate.day,
+      displayDate.hour,
+      0,
+    );
+    final initialTo = initialFrom.add(const Duration(hours: 1));
+    final event = await showEventEditDialog(
+      context: context,
+      initialFrom: initialFrom,
+      initialTo: initialTo,
+    );
+    if (event != null && mounted) {
+      event.planId = widget.planId;
+      _addEvent(event);
+    }
+  }
+
   Future<void> _addEvent(Event event) async {
     try {
       final saved = await EventRepository.instance.insert(event);
@@ -404,7 +426,18 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
         CalendarDataSourceAction.reset,
         _eventDataSource.appointments!,
       );
-      if (mounted) setState(() {});
+      if (mounted) {
+        // 생성한 일정 날짜가 오늘이 아니면(미래/과거) 캘린더를 해당 날짜로 이동
+        final now = DateTime.now();
+        final createdDate = saved.from;
+        if (createdDate.year != now.year ||
+            createdDate.month != now.month ||
+            createdDate.day != now.day) {
+          _calendarController.displayDate = createdDate;
+          _calendarController.selectedDate = createdDate;
+        }
+        setState(() {});
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -1607,6 +1640,14 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                   ),
                 ],
               ),
+      floatingActionButton: _isLoading || _loadError != null
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _onFabNewEvent,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('새 이벤트'),
+              tooltip: '새 이벤트 만들기',
+            ),
       ),
     );
   }
