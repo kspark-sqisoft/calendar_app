@@ -1015,6 +1015,9 @@ class _GettingStartedState extends State<GettingStarted>
               onSelected: (view) {
                 setState(() => _currentView = view);
                 _calendarController.view = view;
+                final today = DateTime.now();
+                _calendarController.displayDate = today;
+                _calendarController.selectedDate = today;
               },
               itemBuilder: (context) => CalendarView.values
                   .map(
