@@ -1382,6 +1382,16 @@ class _GettingStartedState extends ConsumerState<GettingStarted>
                         showNavigationArrow: true,
                         showDatePickerButton: true,
                         todayHighlightColor: Colors.blueAccent,
+                        viewHeaderStyle: ViewHeaderStyle(
+                          dateTextStyle: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          dayTextStyle: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                         currentTimeIndicatorLineWidth: 2,
                         currentTimeIndicatorCircleRadius: 6,
                         currentTimeIndicatorColor: Colors.red,
