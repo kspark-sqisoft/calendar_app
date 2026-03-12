@@ -464,6 +464,16 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
           CalendarDataSourceAction.reset,
           _eventDataSource.appointments!,
         );
+        // 캘린더가 뜬 직후 현재 시간선이 바로 그려지도록 한두 번 더 갱신
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted) setState(() {});
+          });
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) setState(() {});
+          });
+        });
       }
     } catch (e) {
       if (mounted) {
