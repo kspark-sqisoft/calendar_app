@@ -351,7 +351,11 @@ class _PlanListPageState extends ConsumerState<PlanListPage> {
                                         icon: const Icon(Icons.preview_rounded, size: 20),
                                         label: const Text('미리보기'),
                                         style: FilledButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                          minimumSize: const Size(0, 44),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
                                           backgroundColor: colorScheme.primaryContainer,
                                           foregroundColor: colorScheme.onPrimaryContainer,
                                         ),
@@ -362,7 +366,11 @@ class _PlanListPageState extends ConsumerState<PlanListPage> {
                                         icon: const Icon(Icons.cast_rounded, size: 20),
                                         label: const Text('방송 하기'),
                                         style: FilledButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                          minimumSize: const Size(0, 44),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
                                           backgroundColor: colorScheme.tertiaryContainer,
                                           foregroundColor: colorScheme.onTertiaryContainer,
                                         ),
