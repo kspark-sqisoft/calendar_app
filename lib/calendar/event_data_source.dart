@@ -60,12 +60,34 @@ class EventDataSource extends CalendarDataSource<Event> {
     );
   }
 
-  /// 타임라인에서 겹치는 이벤트 순서: 값이 클수록 위에 그림 (온종일 제외).
-  /// null이면 0으로 취급해, 드래그한 쪽(-1 또는 1 등)과 비교되도록 함.
+  /// 타임라인/월 뷰에서 겹치는 이벤트 순서. 올데이는 appointments 리스트 인덱스 그대로 반환해
+  /// 라이브러리가 인덱스 순으로 그릴 때와 동일한 순서가 되도록 함. 비-올데이는 기존 displayOrder 사용.
   @override
   int? getDisplayOrder(dynamic appointmentData) {
-    if (appointmentData is Event) return appointmentData.displayOrder ?? 0;
-    return null;
+    final list = appointments;
+    if (list == null || list.isEmpty) return 0;
+
+    if (appointmentData is Event) {
+      if (appointmentData.isAllDay) {
+        final idx = list.indexOf(appointmentData);
+        return idx >= 0 ? idx : (appointmentData.displayOrder ?? 0);
+      }
+      return appointmentData.displayOrder ?? 0;
+    }
+
+    if (appointmentData is Appointment) {
+      if (appointmentData.isAllDay) {
+        final sub = appointmentData.subject.trim();
+        for (var i = 0; i < list.length; i++) {
+          final e = list[i];
+          if (e is Event && e.isAllDay == true && e.eventName.trim() == sub) {
+            return i;
+          }
+        }
+      }
+      return 0;
+    }
+    return 0;
   }
 }
 

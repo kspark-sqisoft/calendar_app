@@ -867,7 +867,15 @@ class AppointmentHelper {
         if (app1.isSpanned != app2.isSpanned) {
           return orderAppointmentsAscending(app1.isSpanned, app2.isSpanned);
         }
-        if (!app1.isAllDay && !app2.isAllDay) {
+        if (app1.isAllDay && app2.isAllDay) {
+          final int? order1 =
+              calendar.dataSource?.getDisplayOrder(app1.data);
+          final int? order2 =
+              calendar.dataSource?.getDisplayOrder(app2.data);
+          if (order1 != null && order2 != null && order1 != order2) {
+            return order1.compareTo(order2);
+          }
+        } else if (!app1.isAllDay && !app2.isAllDay) {
           final AppointmentView dummyView = AppointmentView()..appointment = app2;
           final bool overlaps = _isIntersectingAppointmentInDayView(
             calendar,

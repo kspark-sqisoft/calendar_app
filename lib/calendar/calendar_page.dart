@@ -381,11 +381,27 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
   }
 
   void _refreshCalendarDisplay() {
-    _eventDataSource.appointments = _getDisplayEvents();
+    final list = _getDisplayEvents();
+    _reorderAllDayInListByDisplayOrder(list);
+    _eventDataSource.appointments = List<Event>.from(list);
     _eventDataSource.notifyListeners(
       CalendarDataSourceAction.reset,
       _eventDataSource.appointments!,
     );
+  }
+
+  /// 임의 리스트 안 올데이만 displayOrder 오름차순으로 재배치 (주/뷰 이동 시에도 순서 일정하게).
+  void _reorderAllDayInListByDisplayOrder(List<Event> list) {
+    final indices = <int>[];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].isAllDay) indices.add(i);
+    }
+    if (indices.isEmpty) return;
+    final allDay = indices.map((i) => list[i]).toList();
+    allDay.sort((a, b) => (a.displayOrder ?? 0).compareTo(b.displayOrder ?? 0));
+    for (var j = 0; j < indices.length; j++) {
+      list[indices[j]] = allDay[j];
+    }
   }
 
   /// Event → JSON 맵 (팝업 표시용)
@@ -1832,6 +1848,11 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                   _calendarController.displayDate = today;
                   _calendarController.selectedDate = today;
                 }
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  _refreshCalendarDisplay();
+                  setState(() {});
+                });
               },
               itemBuilder: (context) => CalendarView.values
                   .map(
@@ -1987,6 +2008,14 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                         onDragEnd: _onAppointmentDragEnd,
                         onAppointmentResizeEnd: _onAppointmentResizeEnd,
                         appointmentBuilder: _buildAppointmentWithStackOpacity,
+                        onViewChanged: (_) {
+                          if (!mounted) return;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            _refreshCalendarDisplay();
+                            setState(() {});
+                          });
+                        },
 
                         onTap: (details) {
                           if (details.date != null &&
