@@ -348,16 +348,19 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       if (wd == null || wd.isEmpty || e.recurrenceRule == null) return e;
       final existing = e.recurrenceExceptionDates ?? [];
       final added = <DateTime>[];
-      for (var d = DateTime(min.year, min.month, min.day);
-          !d.isAfter(max);
-          d = d.add(const Duration(days: 1))) {
+      for (
+        var d = DateTime(min.year, min.month, min.day);
+        !d.isAfter(max);
+        d = d.add(const Duration(days: 1))
+      ) {
         if (wd.contains(d.weekday)) added.add(DateTime(d.year, d.month, d.day));
       }
       if (added.isEmpty) return e;
       final merged = [...existing];
       for (final day in added) {
-        if (merged.any((x) =>
-            x.year == day.year && x.month == day.month && x.day == day.day)) {
+        if (merged.any(
+          (x) => x.year == day.year && x.month == day.month && x.day == day.day,
+        )) {
           continue;
         }
         merged.add(day);
@@ -737,9 +740,34 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     return a.from == b.from && a.to == b.to && a.eventName == b.eventName;
   }
 
-  /// 드래그/리사이즈 콜백에서 appointment → Event 변환 (동일 참조 또는 매칭)
+  /// 드래그/리사이즈 콜백에서 appointment → Event 변환 (동일 참조 또는 매칭).
+  /// Syncfusion이 .data에 우리 Event를 넣어 줄 수 있으므로, 가능하면 _events 안의 동일 항목을 반환.
   Event? _getEventFromAppointment(dynamic appointment) {
-    if (appointment is Event) return appointment;
+    if (appointment is Event) {
+      final idx = _events.indexOf(appointment);
+      if (idx >= 0) return appointment;
+      if (appointment.id != null) {
+        for (final e in _events) {
+          if (e.id == appointment.id) return e;
+        }
+      }
+      return appointment;
+    }
+    if (appointment != null) {
+      try {
+        final d = (appointment as dynamic).data;
+        if (d is Event) {
+          final idx = _events.indexOf(d);
+          if (idx >= 0) return _events[idx];
+          if (d.id != null) {
+            for (final e in _events) {
+              if (e.id == d.id) return e;
+            }
+          }
+          return d;
+        }
+      } catch (_) {}
+    }
     return _findEventFromTapped(appointment);
   }
 
@@ -1190,8 +1218,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
         ? '${event.from.year}.${event.from.month}.${event.from.day} (하루 종일)'
         : '${_formatTime(event.from)} - ${_formatTime(event.to)}';
     final String tooltipMessage = '${event.eventName}\n$timeText';
-    final isRecurring = event.recurrenceRule != null &&
-        event.recurrenceRule!.isNotEmpty;
+    final isRecurring =
+        event.recurrenceRule != null && event.recurrenceRule!.isNotEmpty;
     final content = Tooltip(
       message: tooltipMessage,
       child: Container(
@@ -1245,11 +1273,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
               Positioned(
                 right: 2,
                 bottom: 2,
-                child: Icon(
-                  Icons.autorenew,
-                  size: 14,
-                  color: Colors.white,
-                ),
+                child: Icon(Icons.autorenew, size: 14, color: Colors.white),
               ),
           ],
         ),
@@ -1361,9 +1385,9 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
   void _showAllDayContextMenu(Event event, Offset globalPosition) {
     final allDay = _getAllDayInDisplayOrder();
     if (allDay.length < 2) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('하루 종일 일정이 하나뿐이라 순서를 바꿀 수 없습니다')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('하루 종일 일정이 하나뿐이라 순서를 바꿀 수 없습니다')),
+      );
       return;
     }
     final idx = allDay.indexOf(event);
@@ -1640,6 +1664,16 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       event.from = start;
       event.to = end;
     }
+    // 리사이즈한 event가 복사본이면 _events 안 항목도 동기화해 화면 갱신 시 새 시간이 반영되도록 함
+    if (!_events.contains(event) && event.id != null) {
+      for (final e in _events) {
+        if (e.id == event.id) {
+          e.from = event.from;
+          e.to = event.to;
+          break;
+        }
+      }
+    }
     _persistEventAfterDragOrResize(event);
   }
 
@@ -1651,6 +1685,12 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       await EventRepository.instance.update(event);
       if (!mounted) return;
       _refreshCalendarDisplay();
+      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _refreshCalendarDisplay();
+        setState(() {});
+      });
       debugPrint('[DragEnd] persist: success');
     } catch (e, st) {
       debugPrint('[DragEnd] persist: error=$e\n$st');
