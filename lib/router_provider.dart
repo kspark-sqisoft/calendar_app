@@ -1,6 +1,7 @@
 import 'package:calendar_app/calendar/calendar_page.dart';
 import 'package:calendar_app/creta/creta_page.dart';
 import 'package:calendar_app/device/device_page.dart';
+import 'package:calendar_app/mycalendar/my_calendar_page.dart';
 import 'package:calendar_app/plan/plan_list_page.dart';
 import 'package:calendar_app/plan/plan_new_page.dart';
 import 'package:flutter/material.dart';
@@ -34,9 +35,7 @@ final routerProvider = Provider(
                 pageBuilder: (context, state) {
                   final id = state.pathParameters['id']!;
                   final planId = int.tryParse(id) ?? 1;
-                  return NoTransitionPage(
-                    child: CalendarPage(planId: planId),
-                  );
+                  return NoTransitionPage(child: CalendarPage(planId: planId));
                 },
               ),
             ],
@@ -50,6 +49,11 @@ final routerProvider = Provider(
             path: '/devices',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: DevicePage()),
+          ),
+          GoRoute(
+            path: '/mycalendar',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: MyCalendarPage()),
           ),
         ],
       ),
@@ -66,6 +70,7 @@ class _MainScaffold extends StatelessWidget {
   int get _currentIndex {
     if (currentLocation.startsWith('/creta')) return 1;
     if (currentLocation.startsWith('/devices')) return 2;
+    if (currentLocation.startsWith('/mycalendar')) return 3;
     return 0;
   }
 
@@ -74,9 +79,16 @@ class _MainScaffold extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         currentIndex: _currentIndex,
         onTap: (int index) {
-          final path = index == 0 ? '/plans' : (index == 1 ? '/creta' : '/devices');
+          final path = switch (index) {
+            0 => '/plans',
+            1 => '/creta',
+            2 => '/devices',
+            3 => '/mycalendar',
+            _ => '/plans',
+          };
           if (currentLocation != path) context.go(path);
         },
         items: const <BottomNavigationBarItem>[
@@ -88,9 +100,10 @@ class _MainScaffold extends StatelessWidget {
             icon: Icon(Icons.brush_outlined),
             label: '크레타북',
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.devices), label: '디바이스'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.devices),
-            label: '디바이스',
+            icon: Icon(Icons.calendar_today),
+            label: '내 캘린더',
           ),
         ],
       ),
