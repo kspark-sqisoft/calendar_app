@@ -491,7 +491,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       title: Text(isEdit ? '이벤트 수정' : '새 이벤트'),
       content: SingleChildScrollView(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 440, maxWidth: 480),
+          constraints: const BoxConstraints(minWidth: 480, maxWidth: 520),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
