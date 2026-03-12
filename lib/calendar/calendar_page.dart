@@ -282,6 +282,39 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     super.dispose();
   }
 
+  /// 올데이 이벤트끼리만 displayOrder 부여(0, 1, 2, …). 리스트 순서와 맞추기 위해 _events 안 올데이도 displayOrder 오름차순으로 재배치.
+  void _normalizeDisplayOrderForAllDay() {
+    final allDay = _events.where((e) => e.isAllDay).toList();
+    if (allDay.isEmpty) return;
+    allDay.sort((a, b) {
+      final oa = a.displayOrder ?? 0;
+      final ob = b.displayOrder ?? 0;
+      if (oa != ob) return ob.compareTo(oa);
+      final fc = a.from.compareTo(b.from);
+      if (fc != 0) return fc;
+      return (a.id ?? 0).compareTo(b.id ?? 0);
+    });
+    var order = allDay.length - 1;
+    for (final e in allDay) {
+      e.displayOrder = order--;
+    }
+    _reorderAllDayInEventsByDisplayOrder();
+  }
+
+  /// _events 리스트 안에서 올데이만 displayOrder 오름차순으로 재배치 (리스트 앞=위, 뒤=아래 = 메뉴와 동기화).
+  void _reorderAllDayInEventsByDisplayOrder() {
+    final indices = <int>[];
+    for (var i = 0; i < _events.length; i++) {
+      if (_events[i].isAllDay) indices.add(i);
+    }
+    if (indices.isEmpty) return;
+    final allDay = indices.map((i) => _events[i]).toList();
+    allDay.sort((a, b) => (a.displayOrder ?? 0).compareTo(b.displayOrder ?? 0));
+    for (var j = 0; j < indices.length; j++) {
+      _events[indices[j]] = allDay[j];
+    }
+  }
+
   /// 겹치는 비-올데이 그룹에서 displayOrder가 없거나 같으면, 시작 시간 순(빠른 쪽이 왼쪽/위)으로 초기값 부여.
   void _normalizeDisplayOrderForOverlappingGroups() {
     final nonAllDay = _events.where((e) => !e.isAllDay).toList();
@@ -502,6 +535,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
           _events.clear();
           _events.addAll(list);
           _normalizeDisplayOrderForOverlappingGroups();
+          _normalizeDisplayOrderForAllDay();
           _planName = plan?.name;
           if (savedRange != null) {
             _calendarMinDate = savedRange.minDate;
@@ -617,6 +651,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
         }
       }
       _normalizeDisplayOrderForOverlappingGroups();
+      _normalizeDisplayOrderForAllDay();
       _refreshCalendarDisplay();
       if (mounted) {
         // 생성한 일정 날짜가 오늘이 아니면(미래/과거) 캘린더를 해당 날짜로 이동
@@ -803,6 +838,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       }
       if (!mounted) return;
       _refreshCalendarDisplay();
+      if (mounted) setState(() {});
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -898,8 +934,16 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
   }
 
   /// 겹치는 그룹에서 맨 앞(타임라인=맨 아래, 일뷰=맨 오른쪽)이면 true. 둘 다 displayOrder 최소가 맨 앞.
+  /// 올데이: Syncfusion은 displayOrder 작을수록 위 행에 그림 → displayOrder 최대 = 맨 아래 행 = 방송 중(온에어).
   bool _isFrontInOverlappingStack(Event event) {
-    if (event.isAllDay) return true;
+    if (event.isAllDay) {
+      final allDay = _events.where((e) => e.isAllDay).toList();
+      if (allDay.isEmpty) return true;
+      final maxOrder = allDay
+          .map((e) => e.displayOrder ?? 0)
+          .reduce((a, b) => a > b ? a : b);
+      return (event.displayOrder ?? 0) == maxOrder;
+    }
     final overlapping = _events
         .where(
           (e) =>
@@ -1110,7 +1154,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     final event = _findEventFromTapped(details.appointments.first);
     if (event == null) return const SizedBox.shrink();
     final isFront = _isFrontInOverlappingStack(event);
-    final opacity = event.isAllDay ? 1.0 : (isFront ? 1.0 : 0.3);
+    final opacity = isFront ? 1.0 : 0.3;
     // 시간 기반: 맨 앞이면서 **이 회차가 오늘**이고 현재 시간이 **이 회차** 구간 안일 때만 On Air. 하루 종일: 오늘이 이 회차 날짜일 때만.
     final DateTime occurrenceDate = _getOccurrenceDate(
       details.appointments.first,
@@ -1122,7 +1166,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       details.date,
     );
     final isOnAir = event.isAllDay
-        ? (_isSameDay(occurrenceDate, DateTime.now()) &&
+        ? (isFront &&
+              _isSameDay(occurrenceDate, DateTime.now()) &&
               !_hasTimeBasedOnAirNow())
         : (isFront && _isOnAirForOccurrence(occurrenceStart, occurrenceEnd));
     final String timeText = event.isAllDay
@@ -1205,8 +1250,12 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
   }
 
   /// 선택된 이벤트 우클릭 시: 위로 올리기 / 아래로 내리기 메뉴
+  /// 올데이끼리, 비-올데이끼리만 순서 변경 가능(서로 섞이지 않음).
   void _showEventContextMenu(Event event, Offset globalPosition) {
-    if (event.isAllDay) return;
+    if (event.isAllDay) {
+      _showAllDayContextMenu(event, globalPosition);
+      return;
+    }
     final overlapping = _events
         .where(
           (e) =>
@@ -1284,6 +1333,126 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       ),
       items: items,
     );
+  }
+
+  /// 올데이를 _events 순서대로 (캘린더에 그리는 순서 = 리스트 순서). idx 0 = 화면 위, last = 화면 아래.
+  List<Event> _getAllDayInDisplayOrder() {
+    return _events.where((e) => e.isAllDay).toList();
+  }
+
+  /// 올데이 이벤트 전용 컨텍스트 메뉴. 올데이끼리만 위로/아래로 순서 변경.
+  /// 캘린더는 _events 리스트 순서로 그리므로, 리스트 앞=위/ 뒤=아래. 위에 있는 건 '아래로 내리기'만.
+  void _showAllDayContextMenu(Event event, Offset globalPosition) {
+    final allDay = _getAllDayInDisplayOrder();
+    if (allDay.length < 2) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('하루 종일 일정이 하나뿐이라 순서를 바꿀 수 없습니다')));
+      return;
+    }
+    final idx = allDay.indexOf(event);
+    if (idx < 0) return;
+    final canMoveUp = idx > 0;
+    final canMoveDown = idx < allDay.length - 1;
+    final canMoveToBottom = idx == 0 && allDay.length >= 2;
+    final items = <PopupMenuItem<void>>[
+      if (canMoveUp)
+        PopupMenuItem(
+          child: const ListTile(
+            leading: Icon(Icons.arrow_upward),
+            title: Text('위로 올리기'),
+          ),
+          onTap: () => WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _moveAllDayUp(event),
+          ),
+        ),
+      if (canMoveDown)
+        PopupMenuItem(
+          child: const ListTile(
+            leading: Icon(Icons.arrow_downward),
+            title: Text('아래로 내리기'),
+          ),
+          onTap: () => WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _moveAllDayDown(event),
+          ),
+        ),
+      if (canMoveToBottom)
+        PopupMenuItem(
+          child: const ListTile(
+            leading: Icon(Icons.vertical_align_bottom),
+            title: Text('맨 아래로 내리기'),
+          ),
+          onTap: () => WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _moveAllDayToBottom(event),
+          ),
+        ),
+    ];
+    showMenu<void>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        globalPosition.dx,
+        globalPosition.dy,
+        globalPosition.dx + 1,
+        globalPosition.dy + 1,
+      ),
+      items: items,
+    );
+  }
+
+  void _moveAllDayUp(Event event) {
+    final allDay = _getAllDayInDisplayOrder();
+    if (allDay.length < 2) return;
+    final idx = allDay.indexOf(event);
+    if (idx <= 0) return;
+    final prev = allDay[idx - 1];
+    final prevIdx = _events.indexOf(prev);
+    final eventIdx = _events.indexOf(event);
+    if (prevIdx < 0 || eventIdx < 0) return;
+    _events.removeAt(eventIdx);
+    _events.insert(prevIdx, event);
+    _applyAllDayDisplayOrderFromListOrder();
+    _persistDragOrder(_getAllDayInDisplayOrder());
+    if (mounted) setState(() => _lastTappedEvent = null);
+  }
+
+  void _moveAllDayDown(Event event) {
+    final allDay = _getAllDayInDisplayOrder();
+    if (allDay.length < 2) return;
+    final idx = allDay.indexOf(event);
+    if (idx < 0 || idx >= allDay.length - 1) return;
+    final next = allDay[idx + 1];
+    final nextIdx = _events.indexOf(next);
+    final eventIdx = _events.indexOf(event);
+    if (nextIdx < 0 || eventIdx < 0) return;
+    _events.removeAt(eventIdx);
+    _events.insert(nextIdx, event);
+    _applyAllDayDisplayOrderFromListOrder();
+    _persistDragOrder(_getAllDayInDisplayOrder());
+    if (mounted) setState(() => _lastTappedEvent = null);
+  }
+
+  void _moveAllDayToBottom(Event event) {
+    final allDay = _getAllDayInDisplayOrder();
+    if (allDay.length < 2) return;
+    final idx = allDay.indexOf(event);
+    if (idx < 0 || idx >= allDay.length - 1) return;
+    final last = allDay.last;
+    final eventIdx = _events.indexOf(event);
+    if (eventIdx < 0) return;
+    _events.removeAt(eventIdx);
+    final newLastIdx = _events.indexOf(last);
+    _events.insert(newLastIdx + 1, event);
+    _applyAllDayDisplayOrderFromListOrder();
+    _persistDragOrder(_getAllDayInDisplayOrder());
+    if (mounted) setState(() => _lastTappedEvent = null);
+  }
+
+  /// _events 안 올데이 순서에 맞춰 displayOrder 부여 (앞=작은 값, 뒤=큰 값). 온에어/그리기 순서와 맞추기 위함.
+  void _applyAllDayDisplayOrderFromListOrder() {
+    final allDay = _getAllDayInDisplayOrder();
+    for (var i = 0; i < allDay.length; i++) {
+      allDay[i].displayOrder = i;
+    }
   }
 
   void _moveEventUp(Event event) {
@@ -1744,7 +1913,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                             final event = _findEventFromTapped(
                               details.appointments!.first,
                             );
-                            if (event != null && !event.isAllDay) {
+                            if (event != null) {
                               setState(() => _lastTappedEvent = event);
                               _showEventContextMenu(event, globalPos);
                               return;
@@ -1762,9 +1931,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                             _showContextMenu(date, globalPos);
                             return;
                           }
-                          // 그 외(헤더 등)이고, 선택된 일정이 있으면 그 일정 순서 메뉴
-                          if (_lastTappedEvent != null &&
-                              !_lastTappedEvent!.isAllDay) {
+                          // 그 외(헤더 등)이고, 선택된 일정이 있으면 그 일정 순서 메뉴(올데이/비올데이 각각 해당 메뉴)
+                          if (_lastTappedEvent != null) {
                             _showEventContextMenu(_lastTappedEvent!, globalPos);
                           } else {
                             final date =

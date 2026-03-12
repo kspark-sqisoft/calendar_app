@@ -177,6 +177,28 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
     return false;
   }
 
+  /// 올데이 중 맨 아래 하나만 방송 중 후보. 캘린더와 동일하게 리스트 순서 = 그리기 순서 → 리스트에서 마지막 올데이 = 맨 아래 = 온에어.
+  bool _isBottomAllDayForOnAir(Event event) {
+    if (!event.isAllDay) return false;
+    final allDay = _filteredEvents.where((e) => e.isAllDay).toList();
+    if (allDay.isEmpty) return true;
+    return event == allDay.last;
+  }
+
+  /// 리스트 안 올데이만 displayOrder 오름차순으로 재배치 (캘린더와 동일: 앞=위, 뒤=아래).
+  void _reorderAllDayByDisplayOrder(List<Event> list) {
+    final indices = <int>[];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].isAllDay) indices.add(i);
+    }
+    if (indices.isEmpty) return;
+    final allDay = indices.map((i) => list[i]).toList();
+    allDay.sort((a, b) => (a.displayOrder ?? 0).compareTo(b.displayOrder ?? 0));
+    for (var j = 0; j < indices.length; j++) {
+      list[indices[j]] = allDay[j];
+    }
+  }
+
   DateTime _getOccurrenceDate(dynamic appointment, [DateTime? detailsDate]) {
     if (appointment is Appointment) return appointment.startTime;
     if (appointment is Event && detailsDate != null) return detailsDate;
@@ -227,13 +249,16 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
     return null;
   }
 
-  /// 현재 방송 중인 일정 (시간 기반 또는 오늘 하루종일 중 하나)
+  /// 현재 방송 중인 일정 (시간 기반 또는 오늘 하루종일 중 하나). 올데이는 맨 아래(displayOrder 최소)만.
   Event? get _currentOnAirEvent {
     final now = DateTime.now();
     for (final e in _filteredEvents) {
       if (e.isAllDay) {
         final occ = _occurrenceOnToday(e);
-        if (occ != null && !_hasTimeBasedOnAirNow()) return e;
+        if (occ != null &&
+            !_hasTimeBasedOnAirNow() &&
+            _isBottomAllDayForOnAir(e))
+          return e;
       } else {
         final occ = _occurrenceOnToday(e);
         if (occ != null && !now.isBefore(occ.$1) && now.isBefore(occ.$2)) {
@@ -277,7 +302,8 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
       details.date,
     );
     final isOnAir = event.isAllDay
-        ? (_isSameDay(occurrenceDate, DateTime.now()) &&
+        ? (_isBottomAllDayForOnAir(event) &&
+              _isSameDay(occurrenceDate, DateTime.now()) &&
               !_hasTimeBasedOnAirNow())
         : _isOnAirForOccurrence(occurrenceStart, occurrenceEnd);
     final isRecurring =
@@ -388,6 +414,7 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
         widget.plan.id!,
       );
       final filtered = PlanPreviewUtils.onlyBottomInOverlap(list);
+      _reorderAllDayByDisplayOrder(filtered);
       if (!mounted) return;
       setState(() {
         _filteredEvents = filtered;
@@ -395,10 +422,7 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
       });
       final displayList = _getDisplayEvents();
       _dataSource.appointments = displayList;
-      _dataSource.notifyListeners(
-        CalendarDataSourceAction.reset,
-        displayList,
-      );
+      _dataSource.notifyListeners(CalendarDataSourceAction.reset, displayList);
       // 캘린더가 뜬 직후 현재 시간선이 바로 그려지도록 한두 번 더 갱신
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -435,16 +459,19 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
       if (wd == null || wd.isEmpty || e.recurrenceRule == null) return e;
       final existing = e.recurrenceExceptionDates ?? [];
       final added = <DateTime>[];
-      for (var d = DateTime(min.year, min.month, min.day);
-          !d.isAfter(max);
-          d = d.add(const Duration(days: 1))) {
+      for (
+        var d = DateTime(min.year, min.month, min.day);
+        !d.isAfter(max);
+        d = d.add(const Duration(days: 1))
+      ) {
         if (wd.contains(d.weekday)) added.add(DateTime(d.year, d.month, d.day));
       }
       if (added.isEmpty) return e;
       final merged = [...existing];
       for (final day in added) {
-        if (merged.any((x) =>
-            x.year == day.year && x.month == day.month && x.day == day.day)) {
+        if (merged.any(
+          (x) => x.year == day.year && x.month == day.month && x.day == day.day,
+        )) {
           continue;
         }
         merged.add(day);
@@ -581,63 +608,64 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
                     opacity: _onAirBlinkAnimation.value,
                     child: child,
                   ),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.shade700, width: 2),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.live_tv_rounded,
-                          color: Colors.white,
-                          size: 28,
+                  child: Builder(
+                    builder: (context) {
+                      final onAirColor = _currentOnAirEvent!.background;
+                      final borderColor =
+                          Color.lerp(onAirColor, Colors.black, 0.25) ??
+                          onAirColor;
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '현재 방송 중',
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _currentOnAirEventName!,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (_currentOnAirEventTimeText != null) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  _currentOnAirEventTimeText!,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.9),
+                        decoration: BoxDecoration(
+                          color: onAirColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: borderColor, width: 2),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.live_tv_rounded,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '현재 방송 중',
+                                    style: theme.textTheme.labelMedium
+                                        ?.copyWith(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.9,
+                                          ),
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ],
-                          ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _currentOnAirEventName!,
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
                 if (_currentOnAirEvent?.cretaBooks != null &&

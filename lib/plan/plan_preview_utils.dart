@@ -9,11 +9,20 @@ class PlanPreviewUtils {
   }
 
   /// 겹치는 구간(연결 요소)마다 displayOrder가 가장 작은 것(젤 아래)만 남긴 목록을 반환.
-  /// 올데이 일정은 그대로 포함.
+  /// 올데이 일정은 리스트 순서상 맨 아래(displayOrder 최대) 하나만 포함.
   static List<Event> onlyBottomInOverlap(List<Event> events) {
     final allDay = events.where((e) => e.isAllDay).toList();
     final nonAllDay = events.where((e) => !e.isAllDay).toList();
-    if (nonAllDay.isEmpty) return List.from(events);
+
+    final List<Event> bottomAllDay;
+    if (allDay.isEmpty) {
+      bottomAllDay = [];
+    } else {
+      allDay.sort((a, b) => (a.displayOrder ?? 0).compareTo(b.displayOrder ?? 0));
+      bottomAllDay = [allDay.last];
+    }
+
+    if (nonAllDay.isEmpty) return List.from(bottomAllDay);
 
     final n = nonAllDay.length;
     // 연결 요소: i와 j가 겹치면 같은 그룹
@@ -43,7 +52,7 @@ class PlanPreviewUtils {
     }
     final keepIndex = groupMin.values.toSet();
 
-    final result = <Event>[...allDay];
+    final result = <Event>[...bottomAllDay];
     for (var i = 0; i < n; i++) {
       if (keepIndex.contains(i)) result.add(nonAllDay[i]);
     }
