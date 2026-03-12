@@ -753,12 +753,12 @@ class _EventEditDialogState extends State<_EventEditDialog> {
               if (_recurrenceRule != null && _recurrenceRule!.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 const Text(
-                  '제외 요일',
+                  '표시 요일(제외 요일)',
                   style: TextStyle(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  '일주일이 모두 체크된 상태에서, 제외할 요일만 체크 해제하세요. (예: 토·일 해제 → 주말 제외)',
+                  '체크한 요일만 반복·표시됩니다. 체크 해제한 요일에는 일정이 없습니다.',
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
                 const SizedBox(height: 8),
@@ -767,7 +767,6 @@ class _EventEditDialogState extends State<_EventEditDialog> {
                   runSpacing: 4,
                   children: _weekdayOrderByLocale(context).map((w) {
                     const labels = ['월', '화', '수', '목', '금', '토', '일'];
-                    // 체크 = 해당 요일 반복 O, 체크 해제 = 해당 요일 제외
                     final selected = !_recurrenceExceptionWeekdays.contains(w);
                     return FilterChip(
                       label: Text(
