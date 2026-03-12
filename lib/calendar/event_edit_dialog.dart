@@ -54,6 +54,9 @@ class _EventEditDialogState extends State<_EventEditDialog> {
   /// 반복 일정에서 제외할 날짜들 (날짜만 사용, 시간은 0으로)
   List<DateTime> _recurrenceExceptionDates = [];
 
+  /// 반복 일정에서 제외할 요일 (1=월 … 7=일). 이 요일에는 일정이 표시되지 않음.
+  Set<int> _recurrenceExceptionWeekdays = {};
+
   /// 방송할 크레타북 (멀티 선택)
   List<CretaBook> _selectedCretaBooks = [];
   List<CretaBook> _allCretaBooks = [];
@@ -97,16 +100,31 @@ class _EventEditDialogState extends State<_EventEditDialog> {
     'FREQ=MONTHLY': '매월',
   };
 
+  /// 로케일(캘린더) 기준 첫 요일 순서로 1..7 목록. (예: 미국이면 [7,1,2,3,4,5,6]=일~토)
+  static List<int> _weekdayOrderByLocale(BuildContext context) {
+    final firstIndex = MaterialLocalizations.of(context).firstDayOfWeekIndex;
+    final firstDay = firstIndex == 0 ? 7 : firstIndex;
+    return List.generate(7, (i) => (firstDay - 1 + i) % 7 + 1);
+  }
+
   /// BYDAY 문자열(MO,TU,WE 등) → 요일 Set (1=월 … 7=일). rule에 BYDAY가 없으면 null.
   static Set<int>? _parseWeeklyByDay(String? rule) {
     if (rule == null || rule.isEmpty || !rule.contains('BYDAY=')) return null;
-    final byDayCandidates = rule.split(';').where((s) => s.startsWith('BYDAY='));
+    final byDayCandidates = rule
+        .split(';')
+        .where((s) => s.startsWith('BYDAY='));
     final byDayPart = byDayCandidates.isEmpty ? null : byDayCandidates.first;
     if (byDayPart == null) return null;
     final value = byDayPart.substring(6).trim();
     if (value.isEmpty) return null;
     const Map<String, int> dayToWeekday = {
-      'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6, 'SU': 7,
+      'MO': 1,
+      'TU': 2,
+      'WE': 3,
+      'TH': 4,
+      'FR': 5,
+      'SA': 6,
+      'SU': 7,
     };
     final out = <int>{};
     for (final part in value.split(',')) {
@@ -157,15 +175,20 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       _background = existing.background;
       _isAllDay = existing.isAllDay;
       _recurrenceRule = existing.recurrenceRule;
-      _weeklyRecurrenceWeekdays = _parseWeeklyByDay(existing.recurrenceRule) ??
-          {existing.from.weekday};
+      _weeklyRecurrenceWeekdays =
+          _parseWeeklyByDay(existing.recurrenceRule) ?? {existing.from.weekday};
       _recurrenceExceptionDates = existing.recurrenceExceptionDates != null
           ? existing.recurrenceExceptionDates!
                 .map((d) => DateTime(d.year, d.month, d.day))
                 .toList()
           : [];
-      _selectedCretaBooks =
-          existing.cretaBooks != null ? List.from(existing.cretaBooks!) : [];
+      _recurrenceExceptionWeekdays =
+          existing.recurrenceExceptionWeekdays != null
+          ? Set<int>.from(existing.recurrenceExceptionWeekdays!)
+          : {};
+      _selectedCretaBooks = existing.cretaBooks != null
+          ? List.from(existing.cretaBooks!)
+          : [];
     } else {
       final from = widget.initialFrom!;
       _nameController = TextEditingController(text: '새 일정');
@@ -176,6 +199,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       _recurrenceRule = null;
       _weeklyRecurrenceWeekdays = {from.weekday};
       _recurrenceExceptionDates = [];
+      _recurrenceExceptionWeekdays = {};
       _selectedCretaBooks = [];
     }
     _cretaBooksScrollController = ScrollController();
@@ -211,8 +235,9 @@ class _EventEditDialogState extends State<_EventEditDialog> {
     setState(() {
       final isSelected = _selectedCretaBooks.any((b) => b.id == book.id);
       if (isSelected) {
-        _selectedCretaBooks =
-            _selectedCretaBooks.where((b) => b.id != book.id).toList();
+        _selectedCretaBooks = _selectedCretaBooks
+            .where((b) => b.id != book.id)
+            .toList();
       } else {
         _selectedCretaBooks = List.from(_selectedCretaBooks)..add(book);
       }
@@ -408,6 +433,9 @@ class _EventEditDialogState extends State<_EventEditDialog> {
     final exceptionDates = _recurrenceExceptionDates.isEmpty
         ? null
         : List<DateTime>.from(_recurrenceExceptionDates);
+    final List<int>? exceptionWeekdays = _recurrenceExceptionWeekdays.isEmpty
+        ? null
+        : (List<int>.from(_recurrenceExceptionWeekdays)..sort());
     final cretaBooks = _selectedCretaBooks.isEmpty
         ? null
         : List<CretaBook>.from(_selectedCretaBooks);
@@ -419,6 +447,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       isAllDay: _isAllDay,
       recurrenceRule: normalizedRule,
       recurrenceExceptionDates: exceptionDates,
+      recurrenceExceptionWeekdays: exceptionWeekdays,
       cretaBooks: cretaBooks,
     );
     if (widget.existingEvent != null) {
@@ -462,7 +491,7 @@ class _EventEditDialogState extends State<_EventEditDialog> {
       title: Text(isEdit ? '이벤트 수정' : '새 이벤트'),
       content: SingleChildScrollView(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 400, maxWidth: 480),
+          constraints: const BoxConstraints(minWidth: 440, maxWidth: 480),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -636,8 +665,9 @@ class _EventEditDialogState extends State<_EventEditDialog> {
                         spacing: 8,
                         runSpacing: 8,
                         children: _allCretaBooks.map((book) {
-                          final isSelected =
-                              _selectedCretaBooks.any((b) => b.id == book.id);
+                          final isSelected = _selectedCretaBooks.any(
+                            (b) => b.id == book.id,
+                          );
                           return FilterChip(
                             label: Text(book.name),
                             selected: isSelected,
@@ -669,7 +699,8 @@ class _EventEditDialogState extends State<_EventEditDialog> {
                 onChanged: (v) {
                   setState(() {
                     _recurrenceRule = v;
-                    if (v == 'FREQ=WEEKLY' && _weeklyRecurrenceWeekdays.isEmpty) {
+                    if (v == 'FREQ=WEEKLY' &&
+                        _weeklyRecurrenceWeekdays.isEmpty) {
                       _weeklyRecurrenceWeekdays = {_from.weekday};
                     }
                   });
@@ -686,17 +717,31 @@ class _EventEditDialogState extends State<_EventEditDialog> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (int w = 1; w <= 7; w++)
+                    for (final w in _weekdayOrderByLocale(context))
                       FilterChip(
-                        label: Text(const ['월', '화', '수', '목', '금', '토', '일'][w - 1]),
+                        label: Text(
+                          const ['월', '화', '수', '목', '금', '토', '일'][w - 1],
+                          style: TextStyle(
+                            color: _weeklyRecurrenceWeekdays.contains(w)
+                                ? Colors.white
+                                : Colors.black87,
+                          ),
+                        ),
                         selected: _weeklyRecurrenceWeekdays.contains(w),
+                        selectedColor: Colors.blueAccent,
+                        backgroundColor: Colors.grey.shade300,
+                        checkmarkColor: Colors.white,
                         onSelected: (selected) {
                           setState(() {
                             if (selected) {
-                              _weeklyRecurrenceWeekdays = Set.from(_weeklyRecurrenceWeekdays)..add(w);
+                              _weeklyRecurrenceWeekdays = Set.from(
+                                _weeklyRecurrenceWeekdays,
+                              )..add(w);
                             } else {
                               if (_weeklyRecurrenceWeekdays.length > 1) {
-                                _weeklyRecurrenceWeekdays = Set.from(_weeklyRecurrenceWeekdays)..remove(w);
+                                _weeklyRecurrenceWeekdays = Set.from(
+                                  _weeklyRecurrenceWeekdays,
+                                )..remove(w);
                               }
                             }
                           });
@@ -706,6 +751,51 @@ class _EventEditDialogState extends State<_EventEditDialog> {
                 ),
               ],
               if (_recurrenceRule != null && _recurrenceRule!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  '제외 요일',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '일주일이 모두 체크된 상태에서, 제외할 요일만 체크 해제하세요. (예: 토·일 해제 → 주말 제외)',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: _weekdayOrderByLocale(context).map((w) {
+                    const labels = ['월', '화', '수', '목', '금', '토', '일'];
+                    // 체크 = 해당 요일 반복 O, 체크 해제 = 해당 요일 제외
+                    final selected = !_recurrenceExceptionWeekdays.contains(w);
+                    return FilterChip(
+                      label: Text(
+                        labels[w - 1],
+                        style: TextStyle(
+                          color: selected ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      selected: selected,
+                      selectedColor: Colors.blueAccent,
+                      backgroundColor: Colors.grey.shade300,
+                      checkmarkColor: Colors.white,
+                      onSelected: (v) {
+                        setState(() {
+                          if (v) {
+                            _recurrenceExceptionWeekdays = Set.from(
+                              _recurrenceExceptionWeekdays,
+                            )..remove(w);
+                          } else {
+                            _recurrenceExceptionWeekdays = Set.from(
+                              _recurrenceExceptionWeekdays,
+                            )..add(w);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   '제외 날짜',

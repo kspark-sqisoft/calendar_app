@@ -81,6 +81,12 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
+  /// 해당 요일(1=월…7=일)이 이벤트의 제외 요일이면 true
+  bool _isExceptionWeekday(Event e, int weekday) {
+    final wd = e.recurrenceExceptionWeekdays;
+    return wd != null && wd.isNotEmpty && wd.contains(weekday);
+  }
+
   bool _isOnAirForOccurrence(DateTime start, DateTime end) {
     final now = DateTime.now();
     if (!_isSameDay(start, now)) return false;
@@ -93,6 +99,7 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
     final today = DateTime(now.year, now.month, now.day);
     if (e.recurrenceRule == null || e.recurrenceRule!.isEmpty) {
       if (!_isSameDay(e.from, now)) return null;
+      if (_isExceptionWeekday(e, today.weekday)) return null;
       if (e.isAllDay) return (e.from, e.to);
       return (
         DateTime(
@@ -105,6 +112,7 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
         DateTime(today.year, today.month, today.day, e.to.hour, e.to.minute),
       );
     }
+    if (_isExceptionWeekday(e, now.weekday)) return null;
     final ex = e.recurrenceExceptionDates;
     if (ex != null &&
         ex.any(
@@ -385,10 +393,11 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
         _filteredEvents = filtered;
         _loading = false;
       });
-      _dataSource.appointments = _filteredEvents;
+      final displayList = _getDisplayEvents();
+      _dataSource.appointments = displayList;
       _dataSource.notifyListeners(
         CalendarDataSourceAction.reset,
-        _filteredEvents,
+        displayList,
       );
       // 캘린더가 뜬 직후 현재 시간선이 바로 그려지도록 한두 번 더 갱신
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -415,6 +424,47 @@ class _PlanPreviewDialogState extends State<PlanPreviewDialog>
         });
       }
     }
+  }
+
+  /// 제외 요일을 표시 기간 내 제외 날짜로 넣은 목록 (Syncfusion 표시용)
+  List<Event> _getDisplayEvents() {
+    final min = widget.plan.minDate;
+    final max = widget.plan.maxDate;
+    return _filteredEvents.map<Event>((e) {
+      final wd = e.recurrenceExceptionWeekdays;
+      if (wd == null || wd.isEmpty || e.recurrenceRule == null) return e;
+      final existing = e.recurrenceExceptionDates ?? [];
+      final added = <DateTime>[];
+      for (var d = DateTime(min.year, min.month, min.day);
+          !d.isAfter(max);
+          d = d.add(const Duration(days: 1))) {
+        if (wd.contains(d.weekday)) added.add(DateTime(d.year, d.month, d.day));
+      }
+      if (added.isEmpty) return e;
+      final merged = [...existing];
+      for (final day in added) {
+        if (merged.any((x) =>
+            x.year == day.year && x.month == day.month && x.day == day.day)) {
+          continue;
+        }
+        merged.add(day);
+      }
+      merged.sort((a, b) => a.compareTo(b));
+      return Event(
+        id: e.id,
+        planId: e.planId,
+        eventName: e.eventName,
+        from: e.from,
+        to: e.to,
+        background: e.background,
+        isAllDay: e.isAllDay,
+        recurrenceRule: e.recurrenceRule,
+        recurrenceExceptionDates: merged,
+        recurrenceExceptionWeekdays: e.recurrenceExceptionWeekdays,
+        displayOrder: e.displayOrder,
+        cretaBooks: e.cretaBooks,
+      );
+    }).toList();
   }
 
   void _setView(CalendarView view) {

@@ -17,7 +17,7 @@ class EventRepository {
   static const _plansTable = 'plans';
   static const _settingsTable = 'settings';
   static const _dbName = 'calendar_events.db';
-  static const _version = 6;
+  static const _version = 7;
 
   static const _keyCalendarMinDate = 'calendarMinDate';
   static const _keyCalendarMaxDate = 'calendarMaxDate';
@@ -98,6 +98,13 @@ class EventRepository {
           try {
             await db.execute(
               'ALTER TABLE $_plansTable ADD COLUMN deviceIdsJson TEXT',
+            );
+          } catch (_) {}
+        }
+        if (oldVersion < 7) {
+          try {
+            await db.execute(
+              'ALTER TABLE $_table ADD COLUMN exceptionWeekdaysJson TEXT',
             );
           } catch (_) {}
         }
@@ -341,6 +348,14 @@ class EventRepository {
             .toList();
       } catch (_) {}
     }
+    List<int>? exceptionWeekdays;
+    final wdStr = row['exceptionWeekdaysJson'] as String?;
+    if (wdStr != null && wdStr.isNotEmpty) {
+      try {
+        final list = jsonDecode(wdStr) as List<dynamic>;
+        exceptionWeekdays = list.map((e) => e as int).toList();
+      } catch (_) {}
+    }
     return Event(
       id: row['id'] as int?,
       planId: row['planId'] as int?,
@@ -351,6 +366,7 @@ class EventRepository {
       isAllDay: (row['isAllDay'] as int) == 1,
       recurrenceRule: row['recurrenceRule'] as String?,
       recurrenceExceptionDates: exceptionDates,
+      recurrenceExceptionWeekdays: exceptionWeekdays,
       displayOrder: row['displayOrder'] as int?,
       cretaBooks: cretaBooks,
     );
@@ -389,6 +405,11 @@ class EventRepository {
             .toList(),
       );
     }
+    String? exceptionWeekdaysJson;
+    if (event.recurrenceExceptionWeekdays != null &&
+        event.recurrenceExceptionWeekdays!.isNotEmpty) {
+      exceptionWeekdaysJson = jsonEncode(event.recurrenceExceptionWeekdays);
+    }
     List<CretaBook>? filteredCretaBooks;
     String? cretaBookIdsJson;
     if (event.cretaBooks != null && event.cretaBooks!.isNotEmpty) {
@@ -417,6 +438,7 @@ class EventRepository {
       'isAllDay': event.isAllDay ? 1 : 0,
       'recurrenceRule': event.recurrenceRule,
       'exceptionDatesJson': exceptionJson,
+      'exceptionWeekdaysJson': exceptionWeekdaysJson,
       'displayOrder': event.displayOrder,
       'cretaBookIdsJson': cretaBookIdsJson,
     });
@@ -430,6 +452,7 @@ class EventRepository {
       isAllDay: event.isAllDay,
       recurrenceRule: event.recurrenceRule,
       recurrenceExceptionDates: event.recurrenceExceptionDates,
+      recurrenceExceptionWeekdays: event.recurrenceExceptionWeekdays,
       displayOrder: event.displayOrder,
       cretaBooks: filteredCretaBooks ?? event.cretaBooks,
     );
@@ -461,6 +484,11 @@ class EventRepository {
       cretaBookIdsJson =
           idsToSave.isEmpty ? null : jsonEncode(idsToSave);
     }
+    String? exceptionWeekdaysJson;
+    if (event.recurrenceExceptionWeekdays != null &&
+        event.recurrenceExceptionWeekdays!.isNotEmpty) {
+      exceptionWeekdaysJson = jsonEncode(event.recurrenceExceptionWeekdays);
+    }
     await db.update(
       _table,
       {
@@ -471,6 +499,7 @@ class EventRepository {
         'isAllDay': event.isAllDay ? 1 : 0,
         'recurrenceRule': event.recurrenceRule,
         'exceptionDatesJson': exceptionJson,
+        'exceptionWeekdaysJson': exceptionWeekdaysJson,
         'displayOrder': event.displayOrder,
         'cretaBookIdsJson': cretaBookIdsJson,
       },

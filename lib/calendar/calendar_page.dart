@@ -306,6 +306,55 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
     }
   }
 
+  /// 제외 요일을 표시 기간 내 제외 날짜로 넣은 이벤트 목록 (Syncfusion이 제외 요일을 지원하지 않으므로)
+  List<Event> _getDisplayEvents() {
+    final min = _calendarMinDate;
+    final max = _calendarMaxDate;
+    return _events.map<Event>((e) {
+      final wd = e.recurrenceExceptionWeekdays;
+      if (wd == null || wd.isEmpty || e.recurrenceRule == null) return e;
+      final existing = e.recurrenceExceptionDates ?? [];
+      final added = <DateTime>[];
+      for (var d = DateTime(min.year, min.month, min.day);
+          !d.isAfter(max);
+          d = d.add(const Duration(days: 1))) {
+        if (wd.contains(d.weekday)) added.add(DateTime(d.year, d.month, d.day));
+      }
+      if (added.isEmpty) return e;
+      final merged = [...existing];
+      for (final day in added) {
+        if (merged.any((x) =>
+            x.year == day.year && x.month == day.month && x.day == day.day)) {
+          continue;
+        }
+        merged.add(day);
+      }
+      merged.sort((a, b) => a.compareTo(b));
+      return Event(
+        id: e.id,
+        planId: e.planId,
+        eventName: e.eventName,
+        from: e.from,
+        to: e.to,
+        background: e.background,
+        isAllDay: e.isAllDay,
+        recurrenceRule: e.recurrenceRule,
+        recurrenceExceptionDates: merged,
+        recurrenceExceptionWeekdays: e.recurrenceExceptionWeekdays,
+        displayOrder: e.displayOrder,
+        cretaBooks: e.cretaBooks,
+      );
+    }).toList();
+  }
+
+  void _refreshCalendarDisplay() {
+    _eventDataSource.appointments = _getDisplayEvents();
+    _eventDataSource.notifyListeners(
+      CalendarDataSourceAction.reset,
+      _eventDataSource.appointments!,
+    );
+  }
+
   /// Event → JSON 맵 (팝업 표시용)
   Map<String, dynamic> _eventToJson(Event e) {
     return {
@@ -319,6 +368,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       'recurrenceExceptionDates': e.recurrenceExceptionDates
           ?.map((d) => d.toIso8601String())
           .toList(),
+      'recurrenceExceptionWeekdays': e.recurrenceExceptionWeekdays,
       'displayOrder': e.displayOrder,
       'cretaBooks': e.cretaBooks
           ?.map(
@@ -460,10 +510,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
           _isLoading = false;
           _loadError = null;
         });
-        _eventDataSource.notifyListeners(
-          CalendarDataSourceAction.reset,
-          _eventDataSource.appointments!,
-        );
+        _refreshCalendarDisplay();
         // 캘린더가 뜬 직후 현재 시간선이 바로 그려지도록 한두 번 더 갱신
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -570,10 +617,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
         }
       }
       _normalizeDisplayOrderForOverlappingGroups();
-      _eventDataSource.notifyListeners(
-        CalendarDataSourceAction.reset,
-        _eventDataSource.appointments!,
-      );
+      _refreshCalendarDisplay();
       if (mounted) {
         // 생성한 일정 날짜가 오늘이 아니면(미래/과거) 캘린더를 해당 날짜로 이동
         final now = DateTime.now();
@@ -758,10 +802,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
         await EventRepository.instance.update(e);
       }
       if (!mounted) return;
-      _eventDataSource.notifyListeners(
-        CalendarDataSourceAction.reset,
-        _eventDataSource.appointments!,
-      );
+      _refreshCalendarDisplay();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -958,6 +999,9 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                   _calendarMinDate,
                   _calendarMaxDate,
                 );
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _refreshCalendarDisplay();
+                });
               }
             },
           ),
@@ -987,6 +1031,9 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
                   _calendarMinDate,
                   _calendarMaxDate,
                 );
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _refreshCalendarDisplay();
+                });
               }
             },
           ),
@@ -1418,10 +1465,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       );
       await EventRepository.instance.update(event);
       if (!mounted) return;
-      _eventDataSource.notifyListeners(
-        CalendarDataSourceAction.reset,
-        _eventDataSource.appointments!,
-      );
+      _refreshCalendarDisplay();
       debugPrint('[DragEnd] persist: success');
     } catch (e, st) {
       debugPrint('[DragEnd] persist: error=$e\n$st');
@@ -1451,10 +1495,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       await EventRepository.instance.update(updatedEvent);
       if (!mounted) return;
       _events[index] = updatedEvent;
-      _eventDataSource.notifyListeners(
-        CalendarDataSourceAction.reset,
-        _eventDataSource.appointments!,
-      );
+      _refreshCalendarDisplay();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -1469,9 +1510,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage>
       await EventRepository.instance.delete(event);
       if (!mounted) return;
       _events.remove(event);
-      _eventDataSource.notifyListeners(CalendarDataSourceAction.remove, <Event>[
-        event,
-      ]);
+      _refreshCalendarDisplay();
       _lastTappedEvent = null;
     } catch (e) {
       if (mounted) {

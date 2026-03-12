@@ -54,6 +54,7 @@ class EventDataSource extends CalendarDataSource<Event> {
       isAllDay: appointment.isAllDay,
       recurrenceRule: customData.recurrenceRule,
       recurrenceExceptionDates: customData.recurrenceExceptionDates,
+      recurrenceExceptionWeekdays: customData.recurrenceExceptionWeekdays,
       displayOrder: customData.displayOrder,
       cretaBooks: customData.cretaBooks,
     );
@@ -79,6 +80,7 @@ class Event {
     required this.isAllDay,
     this.recurrenceRule,
     this.recurrenceExceptionDates,
+    this.recurrenceExceptionWeekdays,
     this.displayOrder,
     this.cretaBooks,
   });
@@ -100,6 +102,9 @@ class Event {
   /// 반복 일정에서 제외할 날짜들 (이 날짜에는 일정이 표시되지 않음) recurrenceRule(반복 일정)이 있을 때만 사용
   List<DateTime>? recurrenceExceptionDates;
 
+  /// 반복 일정에서 제외할 요일 (1=월 … 7=일). 이 요일에는 일정이 표시되지 않음. recurrenceRule이 있을 때만 사용.
+  List<int>? recurrenceExceptionWeekdays;
+
   /// 타임라인에서 겹칠 때 그리는 순서 (큰 값일수록 위). 드래그로 이동한 이벤트가 위로 가도록 사용. 온종일 제외.
   int? displayOrder;
 
@@ -108,6 +113,6 @@ class Event {
 
   @override
   String toString() {
-    return 'Event(id: $id, eventName: $eventName, from: $from, to: $to, background: $background, isAllDay: $isAllDay, recurrenceRule: $recurrenceRule, recurrenceExceptionDates: $recurrenceExceptionDates, displayOrder: $displayOrder, cretaBooks: $cretaBooks)';
+    return 'Event(id: $id, eventName: $eventName, from: $from, to: $to, background: $background, isAllDay: $isAllDay, recurrenceRule: $recurrenceRule, recurrenceExceptionDates: $recurrenceExceptionDates, recurrenceExceptionWeekdays: $recurrenceExceptionWeekdays, displayOrder: $displayOrder, cretaBooks: $cretaBooks)';
   }
 }
